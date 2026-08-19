@@ -349,7 +349,7 @@ function validateOverride(override: SimulationOverride, index: number): void {
   }
 
   const hasType = Object.prototype.hasOwnProperty.call(candidate, "type");
-  if (!hasType || candidate.type === "ASSIGN") {
+  if (candidate.type === "ASSIGN" || (!hasType && candidate.type === undefined)) {
     if (
       typeof candidate.technicianId !== "string" ||
       candidate.technicianId.trim().length === 0

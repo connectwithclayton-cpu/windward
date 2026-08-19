@@ -174,4 +174,12 @@ test("malformed override discriminants and required fields fail closed", () => {
     () => simulateScenario(scenario, [{ eventId: "job-a", type: "DECLINE", technicianId: "bravo" }]),
     /decline cannot include a technicianId/,
   );
+
+  const inheritedTypeOverride = Object.create({ type: "BOGUS" });
+  inheritedTypeOverride.eventId = "job-a";
+  inheritedTypeOverride.technicianId = "bravo";
+  assert.throws(
+    () => simulateScenario(scenario, [inheritedTypeOverride]),
+    /invalid type BOGUS/,
+  );
 });
