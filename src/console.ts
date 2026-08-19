@@ -1,4 +1,5 @@
 import {
+  COVERAGE_KEEP_PROJECTION,
   INITIAL_COVERAGE,
   EVENT_ONE_DECISION,
   EVENT_ONE_GRAMMAR,
@@ -19,9 +20,7 @@ import {
 } from "./console/runtime.js";
 import { formatClockMinute, formatMoney } from "./console/decision-model.js";
 import { buildDecisionGrammar } from "./console/decision-model.js";
-import { computeCoverage } from "./index.js";
 import {
-  EMERGENCY_COVERAGE_REQUIREMENT,
   EVENT_ONE_SCENARIO,
   ROSTER,
 } from "./console/scenario.js";
@@ -55,7 +54,7 @@ function renderConsole(current: ConsoleState): string {
   const completion = current.phase === "observation" ? renderObservation() : "";
 
   return `
-    <main id="main-content" class="console-shell">
+    <main id="main-content" class="console-shell phase-enter phase-${current.phase}">
       ${renderSignals(current)}
       ${current.paused ? `<p class="paused-notice" role="status">Shift paused. Resume or restart to continue.</p>` : ""}
       <div class="workspace ${hasRouteDecision || hasCoverageDecision ? "has-decision" : ""}">
@@ -72,7 +71,7 @@ function renderConsole(current: ConsoleState): string {
 
 function renderBriefing(current: ConsoleState): string {
   return `
-    <main id="main-content" class="briefing-stage">
+    <main id="main-content" class="briefing-stage phase-enter phase-briefing">
       <div class="console-shell frozen-board" aria-hidden="true">
         ${renderSignals(current)}
         ${renderBoard(current)}
@@ -94,17 +93,18 @@ function renderSignals(current: ConsoleState): string {
   const coverage = current.coverage;
   const coverageMaximum = Math.max(INITIAL_COVERAGE.availableQualifiedCount, coverage, 1);
   const coveragePercent = Math.max(0, Math.min(100, (coverage / coverageMaximum) * 100));
+  const coverageChanged = current.phase === "coverage-receipt" && current.coverageChoice === "accept";
   return `
     <section class="signals" aria-label="Persistent operational signals">
       <article class="signal context-signal">
         <span class="signal-mark" aria-hidden="true">☀</span>
         <div><span class="signal-label">Context</span><strong>Extreme heat advisory · no-cool calls usually rise after lunch</strong></div>
       </article>
-      <article class="signal coverage-signal" role="meter" aria-label="Emergency coverage after 2 PM" aria-valuemin="0" aria-valuemax="${coverageMaximum}" aria-valuenow="${coverage}" aria-valuetext="${coverage} technician">
+      <div class="signal coverage-signal${coverageChanged ? " is-changing" : ""}" role="meter" aria-label="Emergency coverage after 2 PM" aria-valuemin="0" aria-valuemax="${coverageMaximum}" aria-valuenow="${coverage}" aria-valuetext="${coverage} technician">
         <span class="signal-mark" aria-hidden="true">${coverage}</span>
-        <div><span class="signal-label">Coverage</span><strong>Emergency coverage after 2 PM: ${coverage} tech</strong></div>
-        <span class="coverage-track" aria-hidden="true"><span class="coverage-fill" style="width: ${coveragePercent}%;"></span></span>
-      </article>
+        <div><span class="signal-label">Coverage</span><strong>Emergency coverage after 2 PM: ${coverage} tech</strong>${coverageChanged ? `<span class="coverage-change">Changed ${COVERAGE_KEEP_PROJECTION.before} → ${COVERAGE_KEEP_PROJECTION.after}</span>` : ""}</div>
+        <span class="coverage-track" aria-hidden="true"><span class="coverage-fill" style="--coverage-to: ${coveragePercent / 100};"></span></span>
+      </div>
     </section>`;
 }
 
@@ -148,6 +148,7 @@ function renderDecision(current: ConsoleState): string {
   const selectedName = selectedId === EVENT_ONE_GRAMMAR.second.technicianId
     ? EVENT_ONE_GRAMMAR.second.name
     : EVENT_ONE_GRAMMAR.chosen.name;
+  const omittedConsequence = EVENT_ONE_GRAMMAR.omittedConsequence;
   const confirmation = recorded
     ? `<div class="recorded" id="decision-confirmation" role="status" tabindex="-1">
         <strong>${current.routeChoice === "override" ? "Override recorded" : "Keep recorded"} — ${escapeHtml(selectedName)} assigned.</strong>
@@ -162,6 +163,7 @@ function renderDecision(current: ConsoleState): string {
       <span class="frozen-label"><span aria-hidden="true">❚❚</span> Frozen · no pressure · no penalty</span>
     </header>
     <div class="decision-content">
+      ${renderScoreWithHole(EVENT_ONE_GRAMMAR.chosen, "Later route + future dollars")}
       ${current.phase === "route-decision" || current.phase === "route-receipt" ? renderRouteMap(current) : ""}
       ${renderSharedDecisionGrammar({
         chosen: {
@@ -182,6 +184,10 @@ function renderDecision(current: ConsoleState): string {
         overrideAction: "override",
         disabled: recorded,
       })}
+      ${omittedConsequence === null ? "" : renderDeferredCost(
+        `+${omittedConsequence.laterDriveMinutes} min later driving`,
+        "Future dollar impact not modeled",
+      )}
       ${exclusion === undefined ? "" : `
         <p class="constraint-callout"><span aria-hidden="true">×</span> <strong>Hard constraint:</strong> ${escapeHtml(exclusion.name)} was correctly excluded — ${escapeHtml(exclusion.plainReason.toLowerCase())}.</p>`}
       ${confirmation}
@@ -240,9 +246,9 @@ function renderRouteMap(current: ConsoleState): string {
     ? `Route updated: ${EVENT_ONE_GRAMMAR.second.name} takes the direct assignment and saves ${laterSaved} minutes of later driving.`
     : keepSelected
       ? `Route kept: ${EVENT_ONE_GRAMMAR.chosen.name} crosses the same area twice before a later booking ${consequence.laterBookingDistanceMiles} miles east.`
-      : `Dashed route: dispatcher pick, ${EVENT_ONE_GRAMMAR.chosen.name}. Solid route: second-ranked ${EVENT_ONE_GRAMMAR.second.name}.`;
+      : `The scored route stops at the new repair. The ghosted backtrack to the later booking arrived after it because the dispatcher never counted it.`;
   return `
-    <figure class="route-map">
+    <figure class="route-map ${current.phase === "route-receipt" ? "route-redraw" : "route-intro"} ${overrideSelected ? "override-selected" : keepSelected ? "keep-selected" : ""}">
       <svg viewBox="0 0 620 300" role="img" aria-labelledby="route-title route-description">
         <title id="route-title">Route comparison for ${escapeHtml(EVENT_ONE_GRAMMAR.chosen.name)} and ${escapeHtml(EVENT_ONE_GRAMMAR.second.name)}</title>
         <desc id="route-description">The dispatcher route crosses the work area twice before a ${formatClockMinute(consequence.laterBookingMinute)} booking ${consequence.laterBookingDistanceMiles} miles east. The alternative route saves ${laterSaved} later minutes.</desc>
@@ -250,17 +256,50 @@ function renderRouteMap(current: ConsoleState): string {
         <path class="road major" d="M36 226 C145 150 242 250 354 160 S505 105 590 52"></path>
         <path class="road minor" d="M90 42 C164 112 235 119 350 99"></path>
         <path class="road minor" d="M276 272 C300 208 337 171 420 142"></path>
-        <path class="route maya ${overrideSelected ? "dimmed" : ""}" d="M102 70 C170 104 250 132 337 163 C259 195 184 169 132 130 C251 110 414 118 560 60"></path>
-        <path class="route luis ${keepSelected ? "dimmed" : ""}" d="M52 262 C124 222 221 190 337 163"></path>
+        <path pathLength="1" class="route scored ${overrideSelected ? "dimmed" : ""}" d="M102 70 C170 104 250 132 337 163"></path>
+        <path pathLength="1" class="route alternative ${keepSelected ? "dimmed" : ""}" d="M52 262 C124 222 221 190 337 163"></path>
+        <path pathLength="1" class="consequence-ghost ${overrideSelected ? "avoided" : ""}" d="M337 163 C259 195 184 169 132 130 C251 110 414 118 560 60"></path>
         <g class="map-pin"><circle cx="102" cy="70" r="10"></circle><text x="118" y="64">Maya now</text></g>
         <g class="map-pin"><circle cx="52" cy="262" r="10"></circle><text x="68" y="280">Luis now</text></g>
         <g class="job-pin"><circle cx="337" cy="163" r="11"></circle><text x="353" y="186">New repair</text></g>
         <g class="later-pin"><circle cx="560" cy="60" r="11"></circle><text x="345" y="31">${formatClockMinute(consequence.laterBookingMinute)} booking · ${consequence.laterBookingDistanceMiles} miles east</text></g>
-        <g class="route-cost-label maya-cost"><rect x="166" y="74" width="201" height="31" rx="15"></rect><text x="180" y="95">+${consequence.laterDriveMinutes} min · crosses area twice</text></g>
-        <g class="route-cost-label luis-cost"><rect x="105" y="225" width="145" height="31" rx="15"></rect><text x="121" y="246">saves ${laterSaved} min later</text></g>
+        <g class="route-cost-label ghost-cost"><rect x="240" y="80" width="226" height="31" rx="15"></rect><text x="254" y="101">Not scored · +${consequence.laterDriveMinutes} min later</text></g>
+        <g class="route-cost-label alternative-cost"><rect x="105" y="225" width="145" height="31" rx="15"></rect><text x="121" y="246">saves ${laterSaved} min later</text></g>
       </svg>
-      <figcaption aria-live="polite">${escapeHtml(caption)}</figcaption>
+      <figcaption aria-live="polite"><span><i class="legend-line scored-line" aria-hidden="true"></i>Scored now</span><span><i class="legend-line ghost-line" aria-hidden="true"></i>Future path · not scored</span><strong>${escapeHtml(caption)}</strong></figcaption>
     </figure>`;
+}
+
+function renderScoreWithHole(
+  choice: typeof EVENT_ONE_GRAMMAR.chosen,
+  futureLabel: string,
+): string {
+  return `
+    <section class="score-window" aria-label="Dispatcher score and omitted future impact">
+      <div class="score-heading"><div><span class="choice-rank">Dispatcher score · ${escapeHtml(choice.name)}</span><strong>${formatScore(choice.score)} points</strong></div><span>Only the assignment in front of it</span></div>
+      <div class="factor-strip">
+        ${choice.factors.map((factor) => `
+          <div class="factor-cell">
+            <span>${escapeHtml(factor.label)}</span>
+            <strong>+${formatScore(factor.contribution)}</strong>
+            <small>${escapeHtml(factor.valueLabel)}</small>
+          </div>`).join("")}
+        <div class="factor-cell future-hole">
+          <span>Future impact</span>
+          <strong aria-label="No score contribution">—</strong>
+          <small>${escapeHtml(futureLabel)}<br><b>Not in model</b></small>
+        </div>
+      </div>
+    </section>`;
+}
+
+function formatScore(value: number): string {
+  return value.toFixed(2).replace(/\.00$/, "").replace(/(\.\d)0$/, "$1");
+}
+
+function renderDeferredCost(primary: string, secondary: string): string {
+  return `
+    <p class="deferred-cost"><span class="deferred-icon" aria-hidden="true">↳</span><span><strong>Deferred cost · not in this score</strong>${escapeHtml(primary)} · ${escapeHtml(secondary)}</span></p>`;
 }
 
 function renderWhyDrawer(): string {
@@ -334,16 +373,8 @@ function renderCoverageDecision(current: ConsoleState): string {
     decision,
     Object.fromEntries(ROSTER.map((profile) => [profile.id, profile.name])),
   );
-  const transition = (current.result?.transitions ?? [])[1];
-  if (transition === undefined) return "";
-  const coverageBefore = computeCoverage(
-    transition.beforeBoard,
-    EMERGENCY_COVERAGE_REQUIREMENT,
-  ).availableQualifiedCount;
-  const coverageAfterKeep = computeCoverage(
-    transition.afterBoard,
-    EMERGENCY_COVERAGE_REQUIREMENT,
-  ).availableQualifiedCount;
+  const coverageBefore = COVERAGE_KEEP_PROJECTION.before;
+  const coverageAfterKeep = COVERAGE_KEEP_PROJECTION.after;
   const revenueCents = decision.winner.immediateDeltas.revenueCents;
   const recorded = current.phase === "coverage-receipt";
   const confirmation = recorded
@@ -359,6 +390,7 @@ function renderCoverageDecision(current: ConsoleState): string {
     </header>
     <div class="decision-content">
       <p class="decision-lede">The maintenance job has positive immediate value. Accepting it changes emergency coverage from ${coverageBefore} to ${coverageAfterKeep}.</p>
+      ${renderScoreWithHole(evidence.chosen, "Reserve coverage + future demand")}
       ${renderSharedDecisionGrammar({
         chosen: {
           rankLabel: "Dispatcher chose · Keep",
@@ -378,6 +410,10 @@ function renderCoverageDecision(current: ConsoleState): string {
         overrideAction: "hold-coverage",
         disabled: recorded,
       })}
+      ${renderDeferredCost(
+        `Qualified emergency coverage ${coverageBefore} → ${coverageAfterKeep}`,
+        "Future emergency minutes + dollars deliberately absent",
+      )}
       ${confirmation}
       ${recorded ? `<button class="primary-button wide continue-button" type="button" data-action="continue-emergency">Continue to 2:03 PM emergency</button>` : ""}
       <details class="why-drawer">
@@ -406,7 +442,7 @@ function renderEmergency(current: ConsoleState): string {
   const serviceImpact = covered
     ? "Service level: the no-cool emergency receives same-day service."
     : "Service level: the no-cool call moves to tomorrow.";
-  return `<main id="main-content" class="console-shell">
+  return `<main id="main-content" class="console-shell phase-enter phase-emergency">
     ${renderSignals(current)}
     ${renderBoard(current)}
     <section class="emergency-panel ${covered ? "covered" : "deferred"}" aria-labelledby="emergency-title">
@@ -432,7 +468,7 @@ function renderDebrief(current: ConsoleState): string {
   const emergencyRevenue = playerEmergency.immediateDeltas.revenueCents;
   const netCents = held ? emergencyRevenue - maintenanceRevenue : 0;
   const satisfactionDifference = playerEmergency.satisfactionDelta - baselineEmergency.satisfactionDelta;
-  return `<main id="main-content" class="console-shell">
+  return `<main id="main-content" class="console-shell phase-enter phase-debrief">
     <section class="debrief-panel" aria-labelledby="debrief-title">
       <div class="ledger-heading"><div><p class="eyebrow">Causal debrief · branch ledger</p><h1 id="debrief-title" tabindex="-1">What changed, and why</h1></div><span class="not-score">No overall score</span></div>
       <p class="trace-intro">Your day is compared with the untouched AI-only day. Both branches use the same seed, arrivals, durations, travel times, and promised windows.</p>
@@ -473,7 +509,7 @@ function renderTrace(current: ConsoleState): string {
       : []),
   ];
   return `
-    <main id="main-content" class="trace-shell">
+    <main id="main-content" class="trace-shell phase-enter phase-trace">
       <header class="trace-heading">
         <div><p class="eyebrow">Reading depth four · reproducible trace</p><h1 tabindex="-1">Engineering trace</h1></div>
         <button class="secondary-button" type="button" data-action="close-trace">Back to live board</button>

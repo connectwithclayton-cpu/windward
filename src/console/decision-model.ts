@@ -3,8 +3,16 @@ import type {
   Decision,
   DisqualifiedCandidateEvidence,
   EligibleCandidateEvidence,
+  FactorBreakdown,
   TechnicianId,
 } from "../index.js";
+
+export interface ScoreFactorModel {
+  readonly key: keyof FactorBreakdown;
+  readonly label: string;
+  readonly valueLabel: string;
+  readonly contribution: number;
+}
 
 export interface DecisionChoiceModel {
   readonly technicianId: TechnicianId;
@@ -14,6 +22,8 @@ export interface DecisionChoiceModel {
   readonly totalImmediateMinutes: number;
   readonly revenueCents: number;
   readonly laterDriveMinutes: number | null;
+  readonly score: number;
+  readonly factors: readonly ScoreFactorModel[];
 }
 
 export interface HardConstraintModel {
@@ -55,6 +65,15 @@ const CERTIFICATION_LABELS: Readonly<Record<string, string>> = Object.freeze({
   "epa-608-i": "EPA Section 608 Type I · small appliances",
   "epa-608-ii": "EPA Section 608 Type II · high-pressure residential systems",
   "epa-608-universal": "EPA Section 608 Universal · all covered equipment",
+});
+
+const FACTOR_LABELS: Readonly<Record<keyof FactorBreakdown, string>> = Object.freeze({
+  travelTime: "Travel time",
+  skillMatch: "Skill match",
+  certification: "Certification",
+  availability: "Availability",
+  revenueFit: "Revenue fit",
+  utilisation: "Utilisation",
 });
 
 export function buildDecisionGrammar(
@@ -148,7 +167,41 @@ function toChoice(
     revenueCents: candidate.immediateDeltas.revenueCents,
     laterDriveMinutes:
       candidate.downstreamRouteConsequence?.laterDriveMinutes ?? null,
+    score: candidate.score,
+    factors: Object.freeze(
+      (Object.keys(FACTOR_LABELS) as (keyof FactorBreakdown)[]).map((key) => ({
+        key,
+        label: FACTOR_LABELS[key],
+        valueLabel: formatFactorValue(candidate, key),
+        contribution: candidate.factors[key].contribution,
+      })),
+    ),
   });
+}
+
+function formatFactorValue(
+  candidate: EligibleCandidateEvidence,
+  key: keyof FactorBreakdown,
+): string {
+  if (key === "travelTime") return `${candidate.factors.travelTime.value.minutes} min`;
+  if (key === "skillMatch") {
+    const value = candidate.factors.skillMatch.value;
+    return `${value.matched.length}/${value.matched.length + value.missing.length} skills`;
+  }
+  if (key === "certification") {
+    return candidate.factors.certification.value.missing.length === 0
+      ? "Required cert met"
+      : "Cert missing";
+  }
+  if (key === "availability") {
+    const wait = candidate.factors.availability.value.waitMinutes;
+    return wait === 0 ? "No wait" : `${wait} min wait`;
+  }
+  if (key === "revenueFit") {
+    return formatMoney(candidate.factors.revenueFit.value.expectedRevenueCents);
+  }
+  const utilisation = candidate.factors.utilisation.value;
+  return `${utilisation.assignedMinutes}/${utilisation.capacityMinutes} min`;
 }
 
 function toHardConstraint(
