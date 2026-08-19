@@ -179,8 +179,8 @@ function renderOutcomeStrip(cohort: RiskCohortResult): string {
   const disruption = requireOutcome(plan, "PART_UNAVAILABLE_UNTIL_MONDAY");
   return `<article class="outcome-strip-row ${cohort.planId}" aria-label="${escapeHtml(cohort.planName)}: ${routine.worldCount} routine worlds at ${formatRiskMoney(routine.netValueCents)}, ${disruption.worldCount} part-delay worlds at ${formatRiskMoney(disruption.netValueCents)}, average ${formatRiskMoney(cohort.averageNetValueCents)}, worst ${formatRiskMoney(cohort.worstNetValueCents)}, ${cohort.lossLimitBreachCount} loss-limit breaches, ${cohort.weekendCoolingFailureCount} clients without cooling through the weekend">
     <header><h2>${escapeHtml(cohort.planName)}</h2><span>${cohort.planId === "direct-repair" ? "AI plan · higher average" : "Protected plan · bounded downside"}</span></header>
-    <div class="outcome-strip" aria-hidden="true">
-      <div class="outcome-segment routine"><strong>${routine.worldCount} routine</strong><span>${formatRiskMoney(routine.netValueCents)}</span><i>Observed Saturday · world 042</i></div>
+    <div class="outcome-strip">
+      <div class="outcome-segment routine"><strong>${routine.worldCount} routine</strong><span>${formatRiskMoney(routine.netValueCents)}</span><i aria-hidden="true">Observed Saturday · world 042</i></div>
       <div class="outcome-segment disruption"><strong>${disruption.worldCount} part delays</strong><span>${formatRiskMoney(disruption.netValueCents)}</span></div>
     </div>
     <dl class="strip-summary">
