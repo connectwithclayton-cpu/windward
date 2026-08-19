@@ -1,0 +1,4 @@
+# Windward expects CI checks on every pull request. no-mistakes reads this
+# declaration only from the trusted default branch, so a feature branch cannot
+# exempt itself from CI.
+no_ci: false
