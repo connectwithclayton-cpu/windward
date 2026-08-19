@@ -87,6 +87,9 @@ test("console meter and route map follow live state at the render boundary", () 
   assert.match(app.innerHTML, /Emergency coverage after 2 PM: 0 tech/);
   assert.match(app.innerHTML, /class="coverage-fill" style="width: 0%;"/);
   assert.match(app.innerHTML, /Safety impact: residents remain without cooling until tomorrow/);
+  assert.match(app.innerHTML, /class="board-panel"/);
+  assert.match(app.innerHTML, /Five fictional technicians/);
+  assert.match(app.innerHTML, /The \+\$119 maintenance job remains scheduled/);
 
   app.click("restart");
   app.click("start");
@@ -97,4 +100,5 @@ test("console meter and route map follow live state at the render boundary", () 
   app.click("hold-coverage");
   app.click("continue-emergency");
   assert.match(app.innerHTML, /Safety impact: same-day service reduces/);
+  assert.match(app.innerHTML, /The \$119 tune-up was deferred/);
 });

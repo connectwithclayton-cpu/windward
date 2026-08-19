@@ -396,8 +396,10 @@ function renderCoverageDecision(current: ConsoleState): string {
 function renderEmergency(current: ConsoleState): string {
   const outcome = current.result?.outcomes[2];
   const maintenance = current.result?.outcomes[1];
-  if (outcome === undefined || maintenance === undefined) return "";
+  const maintenanceDecision = current.result?.decisions[1];
+  if (outcome === undefined || maintenance === undefined || maintenanceDecision === undefined) return "";
   const covered = outcome.serviceOutcomeCode === "COMPLETED_IN_WINDOW";
+  const maintenanceRevenue = maintenanceDecision.winner.immediateDeltas.revenueCents;
   const safetyImpact = covered
     ? "Safety impact: same-day service reduces how long residents remain exposed to dangerous indoor heat."
     : "Safety impact: residents remain without cooling until tomorrow, extending exposure to dangerous indoor heat.";
@@ -406,10 +408,11 @@ function renderEmergency(current: ConsoleState): string {
     : "Service level: the no-cool call moves to tomorrow.";
   return `<main id="main-content" class="console-shell">
     ${renderSignals(current)}
+    ${renderBoard(current)}
     <section class="emergency-panel ${covered ? "covered" : "deferred"}" aria-labelledby="emergency-title">
       <div class="event-heading"><div><p class="eyebrow">Event 3 · Emergency</p><h1 id="emergency-title" tabindex="-1">No-cool call arrives</h1></div><span class="time-stamp">2:03 PM</span></div>
       <div class="outcome-first"><h2>${covered ? "Same-day emergency coverage is available." : "Emergency coverage is zero."}</h2><p>${safetyImpact}</p><p>${serviceImpact}</p></div>
-      <div class="revenue-second"><strong>Revenue consequence · secondary</strong><p>${covered ? `The ${formatMoney(maintenance.immediateDeltas.revenueCents)} tune-up was deferred. The emergency is completed today for +${formatMoney(outcome.immediateDeltas.revenueCents)}.` : `The +${formatMoney(maintenance.immediateDeltas.revenueCents)} maintenance job remains scheduled. Emergency revenue moves with the call to tomorrow.`}</p></div>
+      <div class="revenue-second"><strong>Revenue consequence · secondary</strong><p>${covered ? `The ${formatMoney(maintenanceRevenue)} tune-up was deferred. The emergency is completed today for +${formatMoney(outcome.immediateDeltas.revenueCents)}.` : `The +${formatMoney(maintenanceRevenue)} maintenance job remains scheduled. Emergency revenue moves with the call to tomorrow.`}</p></div>
       ${renderEventLog(current)}
       <button class="primary-button wide" type="button" data-action="open-debrief">Open causal debrief</button>
     </section>
