@@ -242,7 +242,8 @@ function simulateEvents(
   overrides: readonly SimulationOverride[],
 ): SimulationResult {
   const overrideByEvent = new Map<string, SimulationOverride>();
-  for (const override of overrides) {
+  for (const [index, override] of overrides.entries()) {
+    validateOverride(override, index);
     if (overrideByEvent.has(override.eventId)) {
       throw new RangeError(`duplicate override for event ${override.eventId}`);
     }
@@ -336,6 +337,34 @@ function simulateEvents(
     transitions,
     finalBoard: board,
   });
+}
+
+function validateOverride(override: SimulationOverride, index: number): void {
+  if (override === null || typeof override !== "object") {
+    throw new RangeError(`override ${index + 1} must be an object`);
+  }
+  const candidate = override as unknown as Record<string, unknown>;
+  if (typeof candidate.eventId !== "string" || candidate.eventId.trim().length === 0) {
+    throw new RangeError(`override ${index + 1} requires a non-empty eventId`);
+  }
+
+  const hasType = Object.prototype.hasOwnProperty.call(candidate, "type");
+  if (!hasType || candidate.type === "ASSIGN") {
+    if (
+      typeof candidate.technicianId !== "string" ||
+      candidate.technicianId.trim().length === 0
+    ) {
+      throw new RangeError(`override ${index + 1} requires a technicianId for assignment`);
+    }
+    return;
+  }
+  if (candidate.type === "DECLINE") {
+    if (Object.prototype.hasOwnProperty.call(candidate, "technicianId")) {
+      throw new RangeError(`override ${index + 1} decline cannot include a technicianId`);
+    }
+    return;
+  }
+  throw new RangeError(`override ${index + 1} has invalid type ${String(candidate.type)}`);
 }
 
 function findEligibleCandidate(

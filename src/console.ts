@@ -40,7 +40,7 @@ function render(): void {
 
 function renderConsole(current: ConsoleState): string {
   if (current.phase === "briefing") {
-    return renderBriefing();
+    return renderBriefing(current);
   }
   if (current.phase === "debrief") return renderDebrief(current);
   if (current.phase === "emergency") return renderEmergency(current);
@@ -56,7 +56,7 @@ function renderConsole(current: ConsoleState): string {
 
   return `
     <main id="main-content" class="console-shell">
-      ${renderSignals()}
+      ${renderSignals(current)}
       ${current.paused ? `<p class="paused-notice" role="status">Shift paused. Resume or restart to continue.</p>` : ""}
       <div class="workspace ${hasRouteDecision || hasCoverageDecision ? "has-decision" : ""}">
         <div class="board-column">
@@ -70,12 +70,12 @@ function renderConsole(current: ConsoleState): string {
     </main>`;
 }
 
-function renderBriefing(): string {
+function renderBriefing(current: ConsoleState): string {
   return `
     <main id="main-content" class="briefing-stage">
       <div class="console-shell frozen-board" aria-hidden="true">
-        ${renderSignals()}
-        ${renderBoard(state)}
+        ${renderSignals(current)}
+        ${renderBoard(current)}
       </div>
       <div class="briefing-scrim">
         <section class="briefing-card" role="dialog" aria-modal="true" aria-labelledby="briefing-title">
@@ -90,18 +90,20 @@ function renderBriefing(): string {
     </main>`;
 }
 
-function renderSignals(): string {
-  const coverage = INITIAL_COVERAGE.availableQualifiedCount;
+function renderSignals(current: ConsoleState): string {
+  const coverage = current.coverage;
+  const coverageMaximum = Math.max(INITIAL_COVERAGE.availableQualifiedCount, coverage, 1);
+  const coveragePercent = Math.max(0, Math.min(100, (coverage / coverageMaximum) * 100));
   return `
     <section class="signals" aria-label="Persistent operational signals">
       <article class="signal context-signal">
         <span class="signal-mark" aria-hidden="true">☀</span>
         <div><span class="signal-label">Context</span><strong>Extreme heat advisory · no-cool calls usually rise after lunch</strong></div>
       </article>
-      <article class="signal coverage-signal" role="meter" aria-label="Emergency coverage after 2 PM" aria-valuemin="0" aria-valuemax="1" aria-valuenow="${coverage}" aria-valuetext="${coverage} technician">
+      <article class="signal coverage-signal" role="meter" aria-label="Emergency coverage after 2 PM" aria-valuemin="0" aria-valuemax="${coverageMaximum}" aria-valuenow="${coverage}" aria-valuetext="${coverage} technician">
         <span class="signal-mark" aria-hidden="true">${coverage}</span>
         <div><span class="signal-label">Coverage</span><strong>Emergency coverage after 2 PM: ${coverage} tech</strong></div>
-        <span class="coverage-track" aria-hidden="true"><span class="coverage-fill"></span></span>
+        <span class="coverage-track" aria-hidden="true"><span class="coverage-fill" style="width: ${coveragePercent}%;"></span></span>
       </article>
     </section>`;
 }
@@ -160,7 +162,7 @@ function renderDecision(current: ConsoleState): string {
       <span class="frozen-label"><span aria-hidden="true">❚❚</span> Frozen · no pressure · no penalty</span>
     </header>
     <div class="decision-content">
-      ${renderRouteMap(current)}
+      ${current.phase === "route-decision" ? renderRouteMap(current) : ""}
       ${renderSharedDecisionGrammar({
         chosen: {
           rankLabel: "Dispatcher chose",
@@ -397,7 +399,7 @@ function renderEmergency(current: ConsoleState): string {
   if (outcome === undefined || maintenance === undefined) return "";
   const covered = outcome.serviceOutcomeCode === "COMPLETED_IN_WINDOW";
   return `<main id="main-content" class="console-shell">
-    ${renderSignals()}
+    ${renderSignals(current)}
     <section class="emergency-panel ${covered ? "covered" : "deferred"}" aria-labelledby="emergency-title">
       <div class="event-heading"><div><p class="eyebrow">Event 3 · Emergency</p><h1 id="emergency-title" tabindex="-1">No-cool call arrives</h1></div><span class="time-stamp">2:03 PM</span></div>
       <div class="outcome-first"><h2>${covered ? "Same-day emergency coverage is available." : "Emergency coverage is zero."}</h2><p>${covered ? "The no-cool emergency receives same-day service." : "The no-cool call moves to tomorrow."}</p></div>
