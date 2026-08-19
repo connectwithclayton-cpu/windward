@@ -26,11 +26,12 @@ plans across an exact weighted set of 100 matched worlds.
 [risk-console]: https://connectwithclayton-cpu.github.io/windward/#risk-appetite
 
 The dependency-free static client in `index.html` imports the compiled engine and
-console layer from `dist/`. It presents the fixed five-technician board, the two
-persistent operational signals, the shared Keep/Override decision grammar, the
-engine-backed Why drawer, both authored outcome branches, a causal comparison
-with the untouched AI-only baseline, and a separate reproducible engineering
-trace.
+console layer from `dist/`. The Horizon case presents the fixed
+five-technician board; Risk appetite presents its separate plan-and-replay
+surface. Both cases use two persistent signals, the shared Keep/Override
+decision grammar, engine-backed explanations, authored outcome branches, a
+causal comparison with the untouched AI-only baseline, and a separate
+reproducible engineering trace.
 
 Risk appetite is a separate static case, not another event in the Horizon
 shift. Its `15 of 100` likelihood, `$15,000` one-job loss limit, plans, outcomes,
