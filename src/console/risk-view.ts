@@ -206,7 +206,7 @@ function renderOutcomeStrip(cohort: RiskCohortResult): string {
   return `<article class="outcome-strip-row ${cohort.planId}">
     <header><h2>${escapeHtml(cohort.planName)}</h2><span>${cohort.planId === "direct-repair" ? "AI plan · higher average" : "Protected plan · bounded downside"}</span></header>
     <p class="sr-only">${routine.worldCount} of ${cohort.worlds.length} routine worlds: ${escapeHtml(routine.coolingStatus)}, ${formatRiskMoney(routine.netValueCents)}. ${disruption.worldCount} of ${cohort.worlds.length} part-delay worlds: ${escapeHtml(disruption.coolingStatus)}, ${formatRiskMoney(disruption.netValueCents)}.</p>
-    <div class="outcome-strip" style="--risk-routine-weight: ${routineWeight}; --risk-disruption-weight: ${disruptionWeight};" aria-hidden="true">
+    <div class="outcome-strip" style="--risk-routine-weight: ${routineWeight}fr; --risk-disruption-weight: ${disruptionWeight}fr;" aria-hidden="true">
       <div class="outcome-segment routine"><strong>${routine.worldCount} routine</strong><span>${formatRiskMoney(routine.netValueCents)}</span><i>Observed Saturday · ${escapeHtml(RISK_APPETITE_CASE.narrativeWorldId)}</i></div>
       <div class="outcome-segment disruption"><strong>${disruption.worldCount} part delays</strong><span>${formatRiskMoney(disruption.netValueCents)}</span></div>
     </div>
