@@ -1,0 +1,990 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Windward — Disposable validation storyboard</title>
+  <style>
+    :root {
+      --ink: #17211d;
+      --muted: #5d6b64;
+      --paper: #f5f1e8;
+      --surface: #fffdf8;
+      --surface-2: #ebe7dc;
+      --line: #c9c4b7;
+      --navy: #143a45;
+      --navy-dark: #0d2a33;
+      --teal: #16766a;
+      --teal-soft: #dceee9;
+      --amber: #9a5b0a;
+      --amber-soft: #fff0cc;
+      --red: #9b342b;
+      --red-soft: #f9dfdb;
+      --blue-soft: #dcebf1;
+      --focus: #7d3cff;
+      --shadow: 0 18px 50px rgba(22, 38, 31, .13);
+      font-family: "Avenir Next", Avenir, "Segoe UI", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--paper); }
+    body { margin: 0; min-height: 100vh; background: var(--paper); }
+    button, summary { font: inherit; }
+    button { touch-action: manipulation; }
+    button:focus-visible, summary:focus-visible, a:focus-visible {
+      outline: 4px solid var(--focus);
+      outline-offset: 3px;
+    }
+    p, h1, h2, h3, h4, li, dd, dt, span, strong, button, summary {
+      overflow-wrap: anywhere;
+    }
+    svg { display: block; max-width: 100%; height: auto; }
+
+    .skip-link {
+      position: fixed;
+      top: .5rem;
+      left: .5rem;
+      z-index: 100;
+      transform: translateY(-180%);
+      background: white;
+      color: var(--ink);
+      padding: .7rem 1rem;
+      border: 2px solid var(--ink);
+      border-radius: .4rem;
+    }
+    .skip-link:focus { transform: none; }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      min-height: 70px;
+      padding: .75rem clamp(1rem, 3vw, 2.5rem);
+      color: white;
+      background: var(--navy-dark);
+      border-bottom: 4px solid #d9a53f;
+    }
+    .brand-row, .header-controls, .signal-heading, .choice-heading,
+    .lane-heading, .decision-actions, .event-heading, .ledger-heading {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      min-width: 0;
+    }
+    .wordmark {
+      font-weight: 850;
+      letter-spacing: .15em;
+      font-size: 1.05rem;
+      white-space: nowrap;
+    }
+    .artifact-label {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(255,255,255,.45);
+      border-radius: 999px;
+      padding: .28rem .62rem;
+      color: #f8e7b9;
+      font-size: .76rem;
+      font-weight: 750;
+      letter-spacing: .025em;
+    }
+    .clock {
+      min-width: 8.5rem;
+      text-align: right;
+      color: #d8e7e6;
+      font-variant-numeric: tabular-nums;
+      font-size: .88rem;
+      font-weight: 700;
+    }
+    .header-button {
+      min-height: 42px;
+      border: 1px solid rgba(255,255,255,.5);
+      border-radius: .45rem;
+      padding: .55rem .8rem;
+      color: white;
+      background: transparent;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .header-button:hover:not(:disabled) { background: rgba(255,255,255,.1); }
+    .header-button:disabled { opacity: .52; cursor: not-allowed; }
+
+    #app { min-height: calc(100vh - 70px); }
+    .shell {
+      width: min(1500px, 100%);
+      margin: 0 auto;
+      padding: clamp(1rem, 2.5vw, 2.2rem);
+    }
+    .screen-title {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(1.85rem, 4vw, 3.15rem);
+      line-height: 1.05;
+      letter-spacing: -.03em;
+    }
+    .eyebrow {
+      margin: 0 0 .45rem;
+      color: var(--teal);
+      font-size: .75rem;
+      font-weight: 850;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    .lede { max-width: 68ch; margin: .7rem 0 0; color: var(--muted); font-size: 1.03rem; }
+    .muted { color: var(--muted); }
+    .small { font-size: .86rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    .signals {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(240px, .65fr);
+      gap: .8rem;
+      margin: 1rem 0;
+    }
+    .signal {
+      min-width: 0;
+      padding: .85rem 1rem;
+      border: 1px solid var(--line);
+      border-radius: .65rem;
+      background: var(--surface);
+    }
+    .signal.context { border-left: 7px solid var(--amber); }
+    .signal.coverage { border-left: 7px solid var(--teal); }
+    .signal.coverage.zero { border-left-color: var(--red); background: var(--red-soft); }
+    .signal-icon {
+      display: inline-grid;
+      place-items: center;
+      width: 1.9rem;
+      height: 1.9rem;
+      flex: 0 0 auto;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-size: .8rem;
+      font-weight: 900;
+    }
+    .signal-label { display: block; color: var(--muted); font-size: .73rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+    .signal-value { display: block; margin-top: .14rem; font-weight: 800; line-height: 1.25; }
+    .coverage-track {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .22rem;
+      margin-top: .6rem;
+    }
+    .coverage-segment { height: .5rem; border-radius: 999px; background: var(--surface-2); }
+    .coverage-segment.on { background: var(--teal); }
+    .zero .coverage-segment.on { background: var(--red); }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(340px, .7fr);
+      align-items: start;
+      gap: 1rem;
+    }
+    .board-panel, .decision-panel, .event-log, .debrief-panel, .emergency-panel,
+    .observation-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: .75rem;
+      background: var(--surface);
+      box-shadow: 0 5px 18px rgba(23,33,29,.06);
+    }
+    .board-panel { padding: 1rem; }
+    .board-header { display: flex; justify-content: space-between; gap: 1rem; align-items: end; margin-bottom: .85rem; }
+    .board-header h2, .event-log h2 { margin: 0; font-size: 1rem; }
+    .board-status { color: var(--muted); font-size: .78rem; font-weight: 700; text-align: right; }
+    .lanes {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: .55rem;
+    }
+    .lane {
+      min-width: 0;
+      min-height: 270px;
+      padding: .7rem;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--navy);
+      border-radius: .48rem;
+      background: #fbfaf5;
+    }
+    .lane.active-tech { border-top-color: var(--teal); background: #f3fbf8; }
+    .lane.excluded-tech { border-top-color: var(--red); }
+    .lane-name { margin: 0; font-size: .96rem; line-height: 1.15; }
+    .lane-area { margin: .2rem 0 .6rem; color: var(--muted); font-size: .74rem; }
+    .status-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: .32rem;
+      max-width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: .25rem .47rem;
+      background: white;
+      font-size: .68rem;
+      font-weight: 800;
+      line-height: 1.2;
+    }
+    .status-tag::before { content: "●"; color: var(--teal); }
+    .status-tag.unavailable::before { content: "×"; color: var(--red); }
+    .lane dl { margin: .8rem 0 0; }
+    .lane dt { color: var(--muted); font-size: .66rem; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+    .lane dd { margin: .1rem 0 .7rem; font-size: .77rem; line-height: 1.35; }
+
+    .event-log { margin-top: .8rem; padding: .9rem 1rem; }
+    .event-log ol { margin: .55rem 0 0; padding-left: 1.2rem; }
+    .event-log li { margin: .3rem 0; color: var(--muted); font-size: .82rem; }
+    .event-log li:last-child { color: var(--ink); font-weight: 750; }
+
+    .decision-panel { overflow: hidden; }
+    .decision-top { padding: 1rem 1rem .8rem; color: white; background: var(--navy); }
+    .decision-top .eyebrow { color: #a8ded5; }
+    .decision-top h1 { margin: 0; font-size: 1.3rem; line-height: 1.22; }
+    .decision-body { padding: 1rem; }
+    .no-pressure {
+      display: inline-block;
+      margin-top: .55rem;
+      padding: .28rem .48rem;
+      border-radius: .35rem;
+      color: var(--navy-dark);
+      background: #dcebf1;
+      font-size: .73rem;
+      font-weight: 800;
+    }
+    .choices { display: grid; gap: .7rem; }
+    .choice-card { border: 1px solid var(--line); border-radius: .55rem; padding: .8rem; background: #fff; }
+    .choice-card.ai { border-left: 6px solid var(--amber); }
+    .choice-card.second { border-left: 6px solid var(--teal); }
+    .choice-rank { color: var(--muted); font-size: .68rem; font-weight: 850; letter-spacing: .075em; text-transform: uppercase; }
+    .choice-card h3 { margin: .18rem 0 .52rem; font-size: 1.03rem; }
+    .cost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; margin: 0; }
+    .cost-grid div { min-width: 0; padding: .48rem; border-radius: .35rem; background: var(--surface-2); }
+    .cost-grid dt { color: var(--muted); font-size: .66rem; font-weight: 850; text-transform: uppercase; }
+    .cost-grid dd { margin: .12rem 0 0; font-size: .78rem; font-weight: 750; line-height: 1.28; }
+    .route-cost {
+      margin: .75rem 0 0;
+      padding: .62rem .72rem;
+      border-left: 5px solid var(--red);
+      background: var(--red-soft);
+      font-weight: 850;
+    }
+    .decision-actions { align-items: stretch; margin-top: .85rem; }
+    .action {
+      min-height: 54px;
+      flex: 1 1 0;
+      border: 2px solid var(--navy);
+      border-radius: .5rem;
+      padding: .75rem;
+      font-weight: 850;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+    .action.keep { color: var(--navy-dark); background: white; }
+    .action.override, .action.primary { color: white; background: var(--navy); }
+    .action:hover:not(:disabled) { box-shadow: inset 0 0 0 2px rgba(255,255,255,.35); }
+    .action:disabled { opacity: .45; cursor: not-allowed; }
+    .action.full { width: 100%; margin-top: .85rem; }
+    .confirmation {
+      margin-top: .85rem;
+      padding: .8rem;
+      border: 2px solid var(--teal);
+      border-radius: .5rem;
+      background: var(--teal-soft);
+    }
+    .confirmation strong { display: block; }
+    .confirmation p { margin: .25rem 0 0; font-size: .84rem; }
+
+    details { margin-top: .8rem; border-top: 1px solid var(--line); padding-top: .75rem; }
+    summary { cursor: pointer; font-weight: 850; color: var(--navy); }
+    details p { margin: .55rem 0; font-size: .86rem; line-height: 1.45; }
+    .why-shape strong { display: block; margin-top: .65rem; }
+    .hard-rule { padding: .65rem; border-left: 5px solid var(--red); background: #fbefed; }
+
+    .route-map {
+      margin: 0 0 .8rem;
+      border: 1px solid var(--line);
+      border-radius: .55rem;
+      overflow: hidden;
+      background: #eef1eb;
+    }
+    .route-map figcaption { padding: .55rem .7rem; border-top: 1px solid var(--line); background: white; font-size: .75rem; font-weight: 800; }
+    .route-map .road { stroke: #bfc6bd; stroke-width: 16; fill: none; stroke-linecap: round; }
+    .route-map .minor-road { stroke: #d9ddd6; stroke-width: 7; fill: none; stroke-linecap: round; }
+    .route-map .maya-route { stroke: var(--red); stroke-width: 7; fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 13 7; }
+    .route-map .luis-route { stroke: var(--teal); stroke-width: 7; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    .route-map .dim-route { opacity: .18; }
+    .route-map text { fill: var(--ink); font-family: "Avenir Next", Avenir, sans-serif; font-size: 13px; font-weight: 750; }
+    .route-map .route-label { font-size: 12px; }
+
+    .observation-card, .emergency-panel, .debrief-panel { padding: clamp(1.1rem, 3vw, 2rem); }
+    .observation-card { max-width: 780px; margin: 1.2rem auto 0; border-top: 7px solid var(--amber); }
+    .observation-card h1 { margin: 0; font-family: Georgia, serif; font-size: clamp(1.8rem, 4vw, 2.6rem); }
+    .observation-card p { color: var(--muted); }
+    .emergency-panel, .debrief-panel { max-width: 940px; margin: 1.2rem auto 0; }
+    .emergency-panel { border-top: 8px solid var(--red); }
+    .emergency-panel.covered { border-top-color: var(--teal); }
+    .event-heading { justify-content: space-between; align-items: start; }
+    .time-stamp { flex: 0 0 auto; border: 1px solid var(--ink); border-radius: 999px; padding: .35rem .6rem; font-size: .78rem; font-weight: 900; }
+    .outcome-first { margin: 1.15rem 0 .7rem; padding: 1rem; border-left: 7px solid var(--red); background: var(--red-soft); }
+    .covered .outcome-first { border-left-color: var(--teal); background: var(--teal-soft); }
+    .outcome-first h2 { margin: 0 0 .35rem; font-size: 1.28rem; }
+    .outcome-first p { margin: 0; }
+    .revenue-second { padding: .8rem 1rem; border: 1px solid var(--line); background: var(--surface-2); }
+    .revenue-second strong { display: block; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
+
+    .debrief-panel { border-top: 8px solid var(--navy); }
+    .ledger-heading { justify-content: space-between; align-items: start; }
+    .not-score { padding: .32rem .55rem; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: .75rem; font-weight: 800; white-space: nowrap; }
+    .branch-ledger { margin-top: 1.2rem; border: 1px solid var(--line); border-radius: .6rem; overflow: hidden; }
+    .ledger-row {
+      display: grid;
+      grid-template-columns: minmax(140px, .34fr) minmax(0, 1fr);
+      border-bottom: 1px solid var(--line);
+    }
+    .ledger-row:last-child { border-bottom: 0; }
+    .ledger-key, .ledger-value { padding: .75rem .9rem; }
+    .ledger-key { color: var(--muted); background: var(--surface-2); font-size: .78rem; font-weight: 850; }
+    .ledger-value { font-weight: 720; }
+    .net-difference { color: white; background: var(--navy); }
+    .causal-summary { margin: 1rem 0 0; padding: 1rem; border-left: 7px solid var(--amber); background: var(--amber-soft); }
+    .causal-summary strong { display: block; margin-bottom: .25rem; }
+    .separate-measures { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .55rem; margin-top: 1rem; }
+    .measure { padding: .65rem; border: 1px solid var(--line); border-radius: .4rem; }
+    .measure span { display: block; color: var(--muted); font-size: .67rem; font-weight: 850; text-transform: uppercase; }
+    .measure strong { display: block; margin-top: .18rem; font-size: .84rem; }
+
+    .paused-notice {
+      margin: 0 0 1rem;
+      padding: .8rem 1rem;
+      border: 2px solid var(--amber);
+      background: var(--amber-soft);
+      font-weight: 850;
+    }
+
+    .briefing-wrap { position: relative; min-height: calc(100vh - 70px); }
+    .briefing-backdrop { filter: grayscale(.75); opacity: .38; pointer-events: none; user-select: none; }
+    .briefing-overlay {
+      position: fixed;
+      z-index: 12;
+      inset: 70px 0 0;
+      display: grid;
+      place-items: center;
+      padding: 1rem;
+      overflow-y: auto;
+      background: rgba(13, 42, 51, .42);
+    }
+    .briefing-card {
+      width: min(650px, 100%);
+      padding: clamp(1.35rem, 5vw, 2.7rem);
+      border: 1px solid #ece6d7;
+      border-top: 9px solid #d9a53f;
+      border-radius: .75rem;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .briefing-card h1 { margin: .1rem 0 .8rem; font-family: Georgia, serif; font-size: clamp(2rem, 6vw, 3.8rem); line-height: 1.03; letter-spacing: -.04em; }
+    .briefing-card .role-copy { font-size: 1.08rem; line-height: 1.55; }
+    .briefing-card .safe-note { margin: .9rem 0; padding: .65rem .75rem; border-left: 5px solid var(--teal); background: var(--teal-soft); font-size: .88rem; }
+
+    .provenance {
+      margin-top: 1.4rem;
+      padding: 1rem;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: .77rem;
+      line-height: 1.55;
+    }
+    .provenance strong { color: var(--ink); }
+
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: 1fr; }
+      .decision-panel { grid-row: 1; }
+      .board-panel { grid-row: 2; }
+      .lanes { grid-template-columns: 1fr 1fr; }
+      .lane { min-height: auto; }
+      .separate-measures { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 640px) {
+      .app-header { align-items: stretch; flex-direction: column; gap: .55rem; min-height: 116px; }
+      .header-controls { justify-content: space-between; }
+      .clock { min-width: 0; margin-right: auto; text-align: left; }
+      .artifact-label { display: none; }
+      .briefing-overlay { inset: 116px 0 0; }
+      .signals { grid-template-columns: 1fr; }
+      .lanes { grid-template-columns: 1fr; }
+      .decision-actions { flex-direction: column; }
+      .cost-grid { grid-template-columns: 1fr; }
+      .ledger-row { grid-template-columns: 1fr; }
+      .ledger-key { border-bottom: 1px solid var(--line); }
+      .separate-measures { grid-template-columns: 1fr; }
+      .event-heading, .ledger-heading { flex-direction: column; }
+      .not-score { white-space: normal; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
+    @media print {
+      .app-header { position: static; }
+      .header-controls { display: none; }
+      .briefing-overlay { position: static; background: none; }
+      .briefing-backdrop { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the current decision</a>
+  <header class="app-header">
+    <div class="brand-row">
+      <span class="wordmark">WINDWARD</span>
+      <span class="artifact-label">Disposable validation storyboard — not the product</span>
+    </div>
+    <div class="header-controls" aria-label="Shift controls">
+      <span class="clock" id="clock" aria-live="polite">90 sec · not started</span>
+      <button class="header-button" id="pause-button" type="button" disabled>Pause</button>
+      <button class="header-button" id="restart-button" type="button">Restart</button>
+    </div>
+  </header>
+  <div id="app"></div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const app = document.getElementById("app");
+      const clock = document.getElementById("clock");
+      const pauseButton = document.getElementById("pause-button");
+      const restartButton = document.getElementById("restart-button");
+
+      const initialState = () => ({
+        screen: "briefing",
+        routeChoice: null,
+        reserveChoice: null,
+        coverage: 1,
+        log: [],
+        paused: false,
+        timerStarted: false,
+        timerRunning: false,
+        timerRemaining: 90,
+        replaying: false
+      });
+
+      let state = initialState();
+
+      const escapeHtml = (value) => String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+      function provenance() {
+        return `
+          <footer class="provenance">
+            <strong>About this research instrument:</strong> This is a disposable validation storyboard, not the product and not a faithful production dispatcher. Windward uses a deliberately myopic simulated dispatcher that looks only at the assignment in front of it. It does not show how any real vendor’s model behaves. Windward is an independent portfolio project, not affiliated with, endorsed by, or built for any company. Its inspiration is a public “AI Operations Strategist” job posting. All companies, technicians, customers, and data in this simulation are fictional.
+          </footer>`;
+      }
+
+      function signals() {
+        const isZero = state.coverage === 0;
+        return `
+          <section class="signals" aria-label="Persistent operational signals">
+            <div class="signal context">
+              <div class="signal-heading">
+                <span class="signal-icon" aria-hidden="true">HEAT</span>
+                <div>
+                  <span class="signal-label">Context</span>
+                  <span class="signal-value">Extreme heat advisory · no-cool calls usually rise after lunch</span>
+                </div>
+              </div>
+            </div>
+            <div class="signal coverage ${isZero ? "zero" : ""}" id="coverage-meter" role="meter" aria-label="Emergency coverage after 2 PM" aria-valuemin="0" aria-valuemax="1" aria-valuenow="${state.coverage}" aria-valuetext="${state.coverage} technician${state.coverage === 1 ? "" : "s"}">
+              <div class="signal-heading">
+                <span class="signal-icon" aria-hidden="true">${isZero ? "0" : "1"}</span>
+                <div>
+                  <span class="signal-label">Coverage</span>
+                  <span class="signal-value">Emergency coverage after 2 PM: ${state.coverage} tech</span>
+                </div>
+              </div>
+              <div class="coverage-track" aria-hidden="true">
+                <span class="coverage-segment ${isZero ? "" : "on"}"></span>
+                <span class="coverage-segment"></span>
+              </div>
+            </div>
+          </section>`;
+      }
+
+      const roster = [
+        { name: "Maya Ortiz", area: "Winter Park", skill: "Diagnostics and repair", qualification: "Certified for residential systems", availability: "Free at 11:00; booked in the east at 1:00" },
+        { name: "Luis Alvarez", area: "Kissimmee", skill: "Diagnostics and repair", qualification: "Certified for residential systems", availability: "Free at 11:00; available for the route alternative" },
+        { name: "Priya Shah", area: "Lake Mary", skill: "Maintenance", qualification: "Certified for residential systems", availability: "Available for the afternoon maintenance window" },
+        { name: "Andre Brooks", area: "Orlando", skill: "No-cool repair", qualification: "Certified for all covered equipment", availability: "Qualified for the after-2-PM emergency slot" },
+        { name: "Sofia Reyes", area: "Apopka", skill: "Maintenance and repair", qualification: "Certified for small appliances only", availability: "Available for morning work; not qualified for the no-cool slot" }
+      ];
+
+      function board({ frozen = false, route = false } = {}) {
+        const lanes = roster.map((tech) => {
+          const active = route && ((state.routeChoice === "luis" && tech.name.startsWith("Luis")) || (state.routeChoice !== "luis" && tech.name.startsWith("Maya")));
+          const excluded = route && tech.name.startsWith("Sofia");
+          return `
+            <article class="lane ${active ? "active-tech" : ""} ${excluded ? "excluded-tech" : ""}">
+              <div class="lane-heading">
+                <div>
+                  <h3 class="lane-name">${tech.name}</h3>
+                  <p class="lane-area">Home area · ${tech.area}</p>
+                </div>
+              </div>
+              <span class="status-tag ${excluded ? "unavailable" : ""}">${excluded ? "Excluded by hard rule" : "Available as listed"}</span>
+              <dl>
+                <dt>Primary skill</dt><dd>${tech.skill}</dd>
+                <dt>Qualification</dt><dd>${tech.qualification}</dd>
+                <dt>Today</dt><dd>${tech.availability}</dd>
+              </dl>
+            </article>`;
+        }).join("");
+        return `
+          <section class="board-panel" aria-label="Five-technician schedule board">
+            <div class="board-header">
+              <div><p class="eyebrow">Schedule board</p><h2>Five fictional technicians</h2></div>
+              <span class="board-status">${frozen ? "Frozen for orientation" : "Decision-relevant work in view"}</span>
+            </div>
+            <div class="lanes">${lanes}</div>
+          </section>`;
+      }
+
+      function eventLog() {
+        const entries = state.log.length
+          ? state.log.map((entry) => `<li>${escapeHtml(entry)}</li>`).join("")
+          : "<li>No decisions recorded yet.</li>";
+        return `
+          <aside class="event-log" aria-label="Event log">
+            <h2>Event log</h2>
+            <ol id="event-log-list" aria-live="polite">${entries}</ol>
+          </aside>`;
+      }
+
+      function routeMap() {
+        const selected = state.routeChoice;
+        const mayaClass = selected === "luis" ? "maya-route dim-route" : "maya-route";
+        const luisClass = selected === "maya" ? "luis-route dim-route" : "luis-route";
+        const caption = selected === "luis"
+          ? "Route updated: Luis takes the direct assignment and avoids Maya’s cross-town backtrack."
+          : selected === "maya"
+            ? "Route kept: Maya crosses the same area twice before her 1:00 booking 31 miles east."
+            : "Dashed route: dispatcher’s pick, Maya. Solid route: second-ranked Luis.";
+        return `
+          <figure class="route-map" id="route-map" aria-labelledby="route-map-caption">
+            <svg viewBox="0 0 520 245" role="img" aria-labelledby="map-title map-desc">
+              <title id="map-title">Route comparison for Maya and Luis</title>
+              <desc id="map-desc">Maya’s dashed route goes to the new repair, back across the same area, then 31 miles east to her one o’clock booking. Luis’s solid route goes directly to the repair.</desc>
+              <rect width="520" height="245" fill="#eef1eb"></rect>
+              <path class="road" d="M40 176 C135 118, 216 202, 306 130 S432 90, 492 55"></path>
+              <path class="minor-road" d="M90 32 C154 90, 212 105, 300 87"></path>
+              <path class="minor-road" d="M240 212 C262 172, 296 136, 355 116"></path>
+              <path class="${mayaClass}" d="M92 58 C150 88, 215 114, 280 134 C221 155, 156 138, 118 112 C217 96, 350 101, 462 59"></path>
+              <path class="${luisClass}" d="M52 205 C105 177, 177 153, 280 134"></path>
+              <circle cx="92" cy="58" r="9" fill="#9b342b"></circle>
+              <circle cx="52" cy="205" r="9" fill="#16766a"></circle>
+              <circle cx="280" cy="134" r="10" fill="#17211d"></circle>
+              <circle cx="462" cy="59" r="10" fill="#d9a53f" stroke="#17211d" stroke-width="2"></circle>
+              <text x="105" y="48">Maya now</text>
+              <text x="64" y="224">Luis now</text>
+              <text x="293" y="152">New repair</text>
+              <text x="316" y="35">1:00 booking · 31 miles east</text>
+              <text class="route-label" x="148" y="188">Luis · direct</text>
+              <text class="route-label" x="142" y="84">Maya · crosses area twice</text>
+            </svg>
+            <figcaption id="route-map-caption" aria-live="polite">${caption}</figcaption>
+          </figure>`;
+      }
+
+      function briefing() {
+        return `
+          <main id="main" class="briefing-wrap">
+            <div class="shell briefing-backdrop" aria-hidden="true">
+              ${signals()}
+              ${board({ frozen: true })}
+            </div>
+            <div class="briefing-overlay">
+              <section class="briefing-card" role="dialog" aria-modal="true" aria-labelledby="briefing-title">
+                <p class="eyebrow">Disposable validation storyboard · not the product</p>
+                <h1 id="briefing-title" tabindex="-1">You supervise an AI dispatcher.</h1>
+                <p class="role-copy">The dispatcher schedules five technicians one job at a time. Compare what it chose with what it ranked second, then choose <strong>Keep</strong> or <strong>Override</strong>.</p>
+                <p class="safe-note"><strong>Safe to explore:</strong> the first decision is frozen. There is no time pressure and no penalty. The 90-second clock starts only after you resolve it.</p>
+                <button class="action primary full" id="start-button" type="button">Start 90-second shift</button>
+                ${provenance()}
+              </section>
+            </div>
+          </main>`;
+      }
+
+      function routeDecision() {
+        const resolved = Boolean(state.routeChoice);
+        return `
+          <main id="main" class="shell">
+            ${signals()}
+            <div class="workspace">
+              <div>
+                ${board({ route: true })}
+                ${eventLog()}
+              </div>
+              <section class="decision-panel" aria-labelledby="route-title">
+                <div class="decision-top">
+                  <p class="eyebrow">Event 1 · Guided route cascade</p>
+                  <h1 id="route-title" tabindex="-1">Who should take the new repair?</h1>
+                  <span class="no-pressure">Frozen · no time pressure · no penalty</span>
+                </div>
+                <div class="decision-body">
+                  ${routeMap()}
+                  <div class="choices">
+                    <article class="choice-card ai">
+                      <span class="choice-rank">Dispatcher chose</span>
+                      <h3>Maya Ortiz</h3>
+                      <dl class="cost-grid">
+                        <div><dt>Minutes</dt><dd>4 min closer now</dd></div>
+                        <div><dt>Dollars</dt><dd>Same repair · no revenue difference</dd></div>
+                      </dl>
+                      <p class="route-cost">+52 min, crosses the same area twice.</p>
+                    </article>
+                    <article class="choice-card second">
+                      <span class="choice-rank">Ranked second</span>
+                      <h3>Luis Alvarez</h3>
+                      <dl class="cost-grid">
+                        <div><dt>Minutes</dt><dd>4 min farther now · saves 47 min later</dd></div>
+                        <div><dt>Dollars</dt><dd>Same repair · no revenue difference</dd></div>
+                      </dl>
+                    </article>
+                  </div>
+                  <div class="decision-actions" aria-label="Route decision actions">
+                    <button class="action keep" type="button" data-route-choice="maya" ${resolved ? "disabled" : ""}>Keep · Assign Maya</button>
+                    <button class="action override" type="button" data-route-choice="luis" ${resolved ? "disabled" : ""}>Override · Assign Luis · saves 47 min</button>
+                  </div>
+                  ${resolved ? `
+                    <div class="confirmation" id="decision-confirmation" role="status" tabindex="-1">
+                      <strong>${state.routeChoice === "luis" ? "Override recorded — Luis assigned." : "Keep recorded — Maya assigned."}</strong>
+                      <p>The route and event log changed immediately. The active clock has not started yet.</p>
+                    </div>
+                    <button class="action primary full" id="resolve-route" type="button">Continue to active shift</button>` : ""}
+                  <details open>
+                    <summary>Why the AI chose Maya</summary>
+                    <div class="why-shape">
+                      <p>4 min closer · correct repair skill · free at 11:00</p>
+                      <strong>What it missed</strong>
+                      <p>Her 1:00 booking is 31 miles east. This choice adds 52 min of later driving.</p>
+                      <strong>Second-ranked eligible alternative</strong>
+                      <p>Luis is 4 min farther now, has the correct repair skill, and saves 47 min later. The same repair carries the same immediate revenue.</p>
+                    </div>
+                  </details>
+                  <details>
+                    <summary>Hard-constraint exclusion · certification detail</summary>
+                    <div class="hard-rule">
+                      <p><strong>Sofia Reyes was correctly excluded.</strong> This repair requires certification for high-pressure residential systems. Sofia is certified only for small appliances.</p>
+                      <p class="small"><strong>Certification codes:</strong> The job requires EPA Section 608 Type II. Sofia has EPA Section 608 Type I. This is a hard constraint, never a dispatcher mistake.</p>
+                    </div>
+                  </details>
+                </div>
+              </section>
+            </div>
+            ${provenance()}
+          </main>`;
+      }
+
+      function riskObservation() {
+        return `
+          <main id="main" class="shell">
+            ${pauseNotice()}
+            ${signals()}
+            ${board()}
+            ${eventLog()}
+            <section class="observation-card" aria-labelledby="risk-title">
+              <p class="eyebrow">Before the next booking</p>
+              <h1 id="risk-title" tabindex="-1">The board is live.</h1>
+              <p>Review the current schedule before the next job arrives, then continue when you are ready.</p>
+              <button class="action primary full" id="continue-to-reserve" data-shift-action type="button">Continue shift</button>
+            </section>
+            ${provenance()}
+          </main>`;
+      }
+
+      function reserveDecision() {
+        const resolved = Boolean(state.reserveChoice);
+        return `
+          <main id="main" class="shell">
+            ${pauseNotice()}
+            ${signals()}
+            <div class="workspace">
+              <div>
+                ${board()}
+                ${eventLog()}
+              </div>
+              <section class="decision-panel" aria-labelledby="reserve-title">
+                <div class="decision-top">
+                  <p class="eyebrow">Event 2 · Live coverage tradeoff</p>
+                  <h1 id="reserve-title" tabindex="-1">Use the last qualified afternoon window?</h1>
+                </div>
+                <div class="decision-body">
+                  <p class="lede">The maintenance job has positive immediate value. Accepting it changes emergency coverage from 1 to 0.</p>
+                  <div class="choices">
+                    <article class="choice-card ai">
+                      <span class="choice-rank">Dispatcher chose · Keep</span>
+                      <h3>Accept maintenance job</h3>
+                      <dl class="cost-grid">
+                        <div><dt>Minutes</dt><dd>Last qualified afternoon window filled</dd></div>
+                        <div><dt>Dollars</dt><dd>+$119 scheduled revenue</dd></div>
+                      </dl>
+                      <p class="route-cost">Emergency coverage after 2 PM: 0 tech</p>
+                    </article>
+                    <article class="choice-card second">
+                      <span class="choice-rank">Ranked second · Override</span>
+                      <h3>Hold window open</h3>
+                      <dl class="cost-grid">
+                        <div><dt>Minutes</dt><dd>Last qualified afternoon window held</dd></div>
+                        <div><dt>Dollars</dt><dd>$119 at risk</dd></div>
+                      </dl>
+                      <p class="route-cost" style="border-left-color: var(--teal); background: var(--teal-soft);">Emergency coverage after 2 PM: 1 tech</p>
+                    </article>
+                  </div>
+                  <div class="decision-actions" aria-label="Reserve decision actions">
+                    <button class="action keep" type="button" data-reserve-choice="accept" data-shift-action ${resolved ? "disabled" : ""}>Keep · Accept maintenance job</button>
+                    <button class="action override" type="button" data-reserve-choice="hold" data-shift-action ${resolved ? "disabled" : ""}>Override · Hold window open</button>
+                  </div>
+                  ${resolved ? `
+                    <div class="confirmation" id="decision-confirmation" role="status" tabindex="-1">
+                      <strong>${state.reserveChoice === "hold" ? "Override recorded — window held open." : "Keep recorded — maintenance job accepted."}</strong>
+                      <p>Coverage moved immediately to ${state.coverage} tech, and the event log recorded your choice.</p>
+                    </div>
+                    <button class="action primary full" id="continue-to-emergency" data-shift-action type="button">Continue to 2:03 PM emergency</button>` : ""}
+                  <details>
+                    <summary>Why the dispatcher preferred the maintenance job</summary>
+                    <div class="why-shape">
+                      <strong>Immediate reasons</strong>
+                      <p>The qualified afternoon window is available, and the job adds $119 of scheduled revenue.</p>
+                      <strong>What it did not use</strong>
+                      <p>The deliberately myopic dispatcher does not look ahead or reserve capacity. It did not use the heat-demand context or the consequence of reducing emergency coverage to 0.</p>
+                    </div>
+                  </details>
+                </div>
+              </section>
+            </div>
+            ${provenance()}
+          </main>`;
+      }
+
+      function emergency() {
+        const held = state.reserveChoice === "hold";
+        return `
+          <main id="main" class="shell">
+            ${signals()}
+            <section class="emergency-panel ${held ? "covered" : ""}" aria-labelledby="emergency-title">
+              <div class="event-heading">
+                <div><p class="eyebrow">Event 3 · Emergency</p><h1 class="screen-title" id="emergency-title" tabindex="-1">No-cool call arrives</h1></div>
+                <span class="time-stamp">2:03 PM</span>
+              </div>
+              <div class="outcome-first">
+                <h2>${held ? "Same-day coverage is available." : "Emergency coverage is zero."}</h2>
+                <p>${held ? "The no-cool emergency receives same-day service." : "The no-cool call moves to tomorrow."}</p>
+              </div>
+              <div class="revenue-second">
+                <strong>Revenue consequence · secondary</strong>
+                <p>${held ? "The $119 tune-up was deferred. The emergency is completed today for +$640." : "The +$119 maintenance job remains scheduled. Emergency revenue moves with the call to tomorrow."}</p>
+              </div>
+              ${eventLog()}
+              <button class="action primary full" id="open-debrief" type="button">Open causal debrief</button>
+            </section>
+            ${provenance()}
+          </main>`;
+      }
+
+      function debrief() {
+        const held = state.reserveChoice === "hold";
+        const routeSummary = state.routeChoice === "luis"
+          ? "You overrode the route choice and assigned Luis; 47 min of later driving was saved."
+          : "You kept the dispatcher’s route choice; Maya’s later route added 52 min.";
+        return `
+          <main id="main" class="shell">
+            <section class="debrief-panel" aria-labelledby="debrief-title">
+              <div class="ledger-heading">
+                <div><p class="eyebrow">Causal debrief · branch ledger</p><h1 class="screen-title" id="debrief-title" tabindex="-1">What changed, and why</h1></div>
+                <span class="not-score">No overall score</span>
+              </div>
+              <p class="lede">Your day is compared with the untouched AI-only day. The same authored arrivals, durations, and travel times are used in both branches.</p>
+              <div class="branch-ledger">
+                <div class="ledger-row"><div class="ledger-key">2:03 PM · No-cool emergency</div><div class="ledger-value">${held ? "You kept the last qualified afternoon slot open." : "You accepted the tune-up and used the last qualified afternoon slot."}</div></div>
+                ${held ? `
+                  <div class="ledger-row"><div class="ledger-key">Revenue</div><div class="ledger-value">Deferred tune-up: -$119<br>Emergency completed today: +$640</div></div>
+                  <div class="ledger-row"><div class="ledger-key">Customer outcome</div><div class="ledger-value">+18 satisfaction · one same-day emergency</div></div>
+                  <div class="ledger-row net-difference"><div class="ledger-key net-difference">Compared with AI-only day</div><div class="ledger-value">Net difference from AI-only day: +$521 and one same-day emergency</div></div>` : `
+                  <div class="ledger-row"><div class="ledger-key">Service level</div><div class="ledger-value">The 2:03 no-cool call moved to tomorrow.</div></div>
+                  <div class="ledger-row"><div class="ledger-key">Revenue</div><div class="ledger-value">+$119 maintenance job scheduled · emergency revenue deferred to tomorrow</div></div>
+                  <div class="ledger-row net-difference"><div class="ledger-key net-difference">Compared with AI-only day</div><div class="ledger-value">No reserve override: this matches the AI-only coverage outcome.</div></div>`}
+              </div>
+              <div class="causal-summary">
+                <strong>The earlier decision that caused this outcome</strong>
+                <span>${held ? "At 11:40 you kept Maya’s afternoon open. That’s the call that covered the 2:03 emergency." : "At 11:42, accepting the tune-up reduced emergency coverage from 1 to 0. The 2:03 no-cool call moved to tomorrow."}</span>
+              </div>
+              <div class="separate-measures" aria-label="Separate outcome measures">
+                <div class="measure"><span>Revenue</span><strong>${held ? "+$521 vs AI-only" : "+$119 scheduled; emergency deferred"}</strong></div>
+                <div class="measure"><span>Drive time</span><strong>${routeSummary}</strong></div>
+                <div class="measure"><span>Same-day completion</span><strong>${held ? "Emergency completed today" : "Emergency moved to tomorrow"}</strong></div>
+                <div class="measure"><span>Customer outcome</span><strong>${held ? "+18 satisfaction" : "No same-day emergency service"}</strong></div>
+              </div>
+              <p class="causal-summary"><strong>Dispatcher flaw</strong>It chose what looked good now and did not use later route or reserve consequences.</p>
+              ${held
+                ? `<button class="action primary full" id="restart-from-debrief" type="button">Restart authored case study</button>`
+                : `<button class="action primary full" id="replay-decision" type="button">Replay the decision</button>`}
+              <details>
+                <summary>Case-study trace and provenance</summary>
+                <p><span class="mono">route-choice → ${state.routeChoice}</span><br><span class="mono">reserve-choice → ${state.reserveChoice}</span><br><span class="mono">coverage-at-2:03 → ${state.coverage}</span></p>
+                <p>This disposable storyboard hardcodes both reserve branches. It has no production engine, backend, account, database, model call, or persistence.</p>
+              </details>
+            </section>
+            ${provenance()}
+          </main>`;
+      }
+
+      function pauseNotice() {
+        return state.paused ? `<div class="paused-notice" role="status">Shift paused. The clock and decision controls are stopped. Use Resume or Restart.</div>` : "";
+      }
+
+      function updateClock() {
+        if (!state.timerStarted) {
+          clock.textContent = "90 sec · not started";
+        } else if (state.replaying) {
+          clock.textContent = "Replay · not timed";
+        } else if (!state.timerRunning && (state.screen === "emergency" || state.screen === "debrief")) {
+          clock.textContent = "Shift frozen";
+        } else {
+          clock.textContent = `${state.timerRemaining} sec${state.paused ? " · paused" : " remaining"}`;
+        }
+      }
+
+      function activeShiftScreen() {
+        return ["risk", "reserve"].includes(state.screen) && state.timerStarted && !state.replaying;
+      }
+
+      function updateControls() {
+        const canPause = activeShiftScreen();
+        pauseButton.disabled = !canPause;
+        pauseButton.textContent = state.paused ? "Resume" : "Pause";
+      }
+
+      function focusCurrent() {
+        requestAnimationFrame(() => {
+          const target = document.getElementById("decision-confirmation") || document.querySelector("main h1[tabindex='-1']");
+          if (target) target.focus();
+        });
+      }
+
+      function render({ focus = true } = {}) {
+        const renderers = {
+          briefing,
+          route: routeDecision,
+          risk: riskObservation,
+          reserve: reserveDecision,
+          emergency,
+          debrief
+        };
+        app.innerHTML = renderers[state.screen]();
+        if (state.paused) {
+          app.querySelectorAll("[data-shift-action]").forEach((button) => { button.disabled = true; });
+        }
+        updateClock();
+        updateControls();
+        if (focus) focusCurrent();
+      }
+
+      function startTimer() {
+        state.timerStarted = true;
+        state.timerRunning = true;
+        updateClock();
+      }
+
+      setInterval(() => {
+        if (state.timerRunning && !state.paused && state.timerRemaining > 0) {
+          state.timerRemaining -= 1;
+          updateClock();
+        }
+      }, 1000);
+
+      app.addEventListener("click", (event) => {
+        const routeButton = event.target.closest("[data-route-choice]");
+        if (routeButton && !state.routeChoice) {
+          state.routeChoice = routeButton.dataset.routeChoice;
+          state.log.push(state.routeChoice === "luis"
+            ? "Route override recorded: Luis assigned; 47 min saved later."
+            : "Route choice kept: Maya assigned; +52 min later driving remains.");
+          render();
+          return;
+        }
+
+        const reserveButton = event.target.closest("[data-reserve-choice]");
+        if (reserveButton && !state.reserveChoice && !state.paused) {
+          state.reserveChoice = reserveButton.dataset.reserveChoice;
+          state.coverage = state.reserveChoice === "hold" ? 1 : 0;
+          state.log.push(state.reserveChoice === "hold"
+            ? "11:40 · Override recorded: window held; emergency coverage remains 1."
+            : "11:42 · Keep recorded: maintenance accepted; emergency coverage moved 1 → 0.");
+          render();
+          return;
+        }
+
+        if (event.target.closest("#start-button")) {
+          state.screen = "route";
+          render();
+        } else if (event.target.closest("#resolve-route")) {
+          state.screen = "risk";
+          startTimer();
+          render();
+        } else if (event.target.closest("#continue-to-reserve") && !state.paused) {
+          state.screen = "reserve";
+          render();
+        } else if (event.target.closest("#continue-to-emergency") && !state.paused) {
+          state.screen = "emergency";
+          state.timerRunning = false;
+          render();
+        } else if (event.target.closest("#open-debrief")) {
+          state.screen = "debrief";
+          render();
+        } else if (event.target.closest("#replay-decision")) {
+          state.screen = "reserve";
+          state.reserveChoice = null;
+          state.coverage = 1;
+          state.log = state.log.filter((entry) => !entry.startsWith("11:40") && !entry.startsWith("11:42"));
+          state.paused = false;
+          state.timerRunning = false;
+          state.replaying = true;
+          render();
+        } else if (event.target.closest("#restart-from-debrief")) {
+          restart();
+        }
+      });
+
+      pauseButton.addEventListener("click", () => {
+        if (!activeShiftScreen()) return;
+        state.paused = !state.paused;
+        render();
+      });
+
+      function restart() {
+        state = initialState();
+        render();
+      }
+
+      restartButton.addEventListener("click", restart);
+
+      render();
+    })();
+  </script>
+</body>
+</html>
