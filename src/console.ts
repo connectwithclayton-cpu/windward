@@ -3,9 +3,14 @@ import {
   EVENT_ONE_DECISION,
   EVENT_ONE_GRAMMAR,
   closeTrace,
+  continueToEmergency,
   continueToActiveShift,
   createInitialConsoleState,
+  getCoverageDecision,
+  openCoverageDecision,
+  openDebrief,
   openTrace,
+  recordCoverageChoice,
   recordRouteChoice,
   startShift,
   tick,
@@ -13,7 +18,13 @@ import {
   type ConsoleState,
 } from "./console/runtime.js";
 import { formatClockMinute, formatMoney } from "./console/decision-model.js";
-import { EVENT_ONE_SCENARIO, ROSTER } from "./console/scenario.js";
+import { buildDecisionGrammar } from "./console/decision-model.js";
+import { computeCoverage } from "./index.js";
+import {
+  EMERGENCY_COVERAGE_REQUIREMENT,
+  EVENT_ONE_SCENARIO,
+  ROSTER,
+} from "./console/scenario.js";
 
 const app = requireElement<HTMLElement>("#app");
 const clock = requireElement<HTMLElement>("#shift-clock");
@@ -31,17 +42,23 @@ function renderConsole(current: ConsoleState): string {
   if (current.phase === "briefing") {
     return renderBriefing();
   }
+  if (current.phase === "debrief") return renderDebrief(current);
+  if (current.phase === "emergency") return renderEmergency(current);
 
-  const hasRouteDecision = current.phase === "decision" || current.phase === "receipt";
+  const hasRouteDecision = current.phase === "route-decision" || current.phase === "route-receipt";
+  const hasCoverageDecision = current.phase === "coverage-decision" || current.phase === "coverage-receipt";
   const decisionFirst = hasRouteDecision
     ? `<section class="decision-shell" aria-labelledby="decision-title">${renderDecision(current)}</section>`
-    : "";
-  const completion = current.phase === "shift" ? renderShiftHandoff(current) : "";
+    : hasCoverageDecision
+      ? `<section class="decision-shell" aria-labelledby="coverage-title">${renderCoverageDecision(current)}</section>`
+      : "";
+  const completion = current.phase === "observation" ? renderObservation() : "";
 
   return `
     <main id="main-content" class="console-shell">
       ${renderSignals()}
-      <div class="workspace ${hasRouteDecision ? "has-decision" : ""}">
+      ${current.paused ? `<p class="paused-notice" role="status">Shift paused. Resume or restart to continue.</p>` : ""}
+      <div class="workspace ${hasRouteDecision || hasCoverageDecision ? "has-decision" : ""}">
         <div class="board-column">
           ${renderBoard(current)}
           ${renderEventLog(current)}
@@ -92,10 +109,10 @@ function renderSignals(): string {
 function renderBoard(current: ConsoleState): string {
   const excluded = new Set(EVENT_ONE_GRAMMAR.hardConstraints.map((entry) => entry.technicianId));
   const activeId = current.assignedTechnicianId ??
-    (current.phase === "decision" ? EVENT_ONE_GRAMMAR.chosen.technicianId : null);
+    (current.phase === "route-decision" ? EVENT_ONE_GRAMMAR.chosen.technicianId : null);
   const lanes = ROSTER.map((profile) => {
     const isExcluded = excluded.has(profile.id) &&
-      (current.phase === "decision" || current.phase === "receipt");
+      (current.phase === "route-decision" || current.phase === "route-receipt");
     const isActive = profile.id === activeId;
     return `
       <article class="technician-lane ${isActive ? "is-active" : ""} ${isExcluded ? "is-excluded" : ""}">
@@ -123,7 +140,7 @@ function renderBoard(current: ConsoleState): string {
 }
 
 function renderDecision(current: ConsoleState): string {
-  const recorded = current.phase === "receipt";
+  const recorded = current.phase === "route-receipt";
   const exclusion = EVENT_ONE_GRAMMAR.hardConstraints[0];
   const selectedId = current.assignedTechnicianId;
   const selectedName = selectedId === EVENT_ONE_GRAMMAR.second.technicianId
@@ -144,34 +161,69 @@ function renderDecision(current: ConsoleState): string {
     </header>
     <div class="decision-content">
       ${renderRouteMap(current)}
-      <div class="choice-grid">
-        ${renderChoice("Dispatcher chose", EVENT_ONE_GRAMMAR.chosen, "dispatcher")}
-        ${renderChoice("Ranked second", EVENT_ONE_GRAMMAR.second, "second")}
-      </div>
+      ${renderSharedDecisionGrammar({
+        chosen: {
+          rankLabel: "Dispatcher chose",
+          title: EVENT_ONE_GRAMMAR.chosen.name,
+          minutes: `${EVENT_ONE_GRAMMAR.chosen.travelMinutes} min to job · ${EVENT_ONE_GRAMMAR.chosen.totalImmediateMinutes} min total`,
+          dollars: `${formatMoney(EVENT_ONE_GRAMMAR.chosen.revenueCents)} job value`,
+        },
+        second: {
+          rankLabel: "Ranked second",
+          title: EVENT_ONE_GRAMMAR.second.name,
+          minutes: `${EVENT_ONE_GRAMMAR.second.travelMinutes} min to job · ${EVENT_ONE_GRAMMAR.second.totalImmediateMinutes} min total`,
+          dollars: `${formatMoney(EVENT_ONE_GRAMMAR.second.revenueCents)} job value`,
+        },
+        keepLabel: EVENT_ONE_GRAMMAR.keepLabel,
+        overrideLabel: EVENT_ONE_GRAMMAR.overrideLabel,
+        keepAction: "keep",
+        overrideAction: "override",
+        disabled: recorded,
+      })}
       ${exclusion === undefined ? "" : `
         <p class="constraint-callout"><span aria-hidden="true">×</span> <strong>Hard constraint:</strong> ${escapeHtml(exclusion.name)} was correctly excluded — ${escapeHtml(exclusion.plainReason.toLowerCase())}.</p>`}
-      <div class="decision-actions" aria-label="Route decision actions">
-        <button class="secondary-button" type="button" data-action="keep" ${recorded ? "disabled" : ""}>${escapeHtml(EVENT_ONE_GRAMMAR.keepLabel)}</button>
-        <button class="primary-button" type="button" data-action="override" ${recorded ? "disabled" : ""}>${escapeHtml(EVENT_ONE_GRAMMAR.overrideLabel)}</button>
-      </div>
       ${confirmation}
       ${recorded ? `<button class="primary-button wide continue-button" type="button" data-action="continue">Continue to active shift</button>` : ""}
       ${renderWhyDrawer()}
     </div>`;
 }
 
-function renderChoice(
-  rankLabel: string,
-  choice: typeof EVENT_ONE_GRAMMAR.chosen,
-  variant: string,
-): string {
+interface SharedChoiceView {
+  readonly rankLabel: string;
+  readonly title: string;
+  readonly minutes: string;
+  readonly dollars: string;
+}
+
+interface SharedDecisionView {
+  readonly chosen: SharedChoiceView;
+  readonly second: SharedChoiceView;
+  readonly keepLabel: string;
+  readonly overrideLabel: string;
+  readonly keepAction: string;
+  readonly overrideAction: string;
+  readonly disabled: boolean;
+}
+
+function renderSharedDecisionGrammar(view: SharedDecisionView): string {
+  return `<div class="choice-grid">
+      ${renderChoice(view.chosen, "dispatcher")}
+      ${renderChoice(view.second, "second")}
+    </div>
+    <div class="decision-actions" aria-label="Decision actions">
+      <button class="secondary-button" type="button" data-action="${escapeHtml(view.keepAction)}" ${view.disabled ? "disabled" : ""}>${escapeHtml(view.keepLabel)}</button>
+      <button class="primary-button" type="button" data-action="${escapeHtml(view.overrideAction)}" ${view.disabled ? "disabled" : ""}>${escapeHtml(view.overrideLabel)}</button>
+    </div>`;
+}
+
+function renderChoice(choice: SharedChoiceView, variant: string): string {
   return `
     <article class="choice-card ${variant}">
-      <span class="choice-rank">${escapeHtml(rankLabel)}</span>
-      <h2>${escapeHtml(choice.name)}</h2>
+      <span class="choice-rank">${escapeHtml(choice.rankLabel)}</span>
+      <h2>${escapeHtml(choice.title)}</h2>
       <dl class="costs">
-        <div><dt>Minutes</dt><dd>${choice.travelMinutes} min to job · ${choice.totalImmediateMinutes} min total</dd></div>
-        <div><dt>Dollars</dt><dd>${formatMoney(choice.revenueCents)} job value</dd></div>
+        <div><dt>Minutes</dt><dd>${escapeHtml(choice.minutes)}</dd></div>
+        <div><dt>Dollars</dt><dd>${escapeHtml(choice.dollars)}</dd></div>
       </dl>
     </article>`;
 }
@@ -262,33 +314,153 @@ function renderEventLog(current: ConsoleState): string {
     </aside>`;
 }
 
-function renderShiftHandoff(current: ConsoleState): string {
+function renderObservation(): string {
   return `
     <section class="shift-handoff" aria-labelledby="shift-active-title">
       <div>
-        <p class="eyebrow">Guided event complete</p>
-        <h2 id="shift-active-title">The active shift is running.</h2>
-        <p>The route map is gone because no route decision is live. Pause and restart remain available.</p>
+        <p class="eyebrow">Before the next booking</p>
+        <h2 id="shift-active-title">The board is live.</h2>
+        <p>The route map is gone. Review the heat context and remaining emergency coverage before the next job arrives.</p>
       </div>
-      <button class="secondary-button" type="button" data-action="trace" ${current.result === null ? "disabled" : ""}>Open engineering trace</button>
+      <button class="primary-button" type="button" data-action="open-coverage">Continue shift</button>
     </section>`;
 }
 
+function renderCoverageDecision(current: ConsoleState): string {
+  const decision = getCoverageDecision(current);
+  const evidence = buildDecisionGrammar(
+    decision,
+    Object.fromEntries(ROSTER.map((profile) => [profile.id, profile.name])),
+  );
+  const transition = (current.result?.transitions ?? [])[1];
+  if (transition === undefined) return "";
+  const coverageBefore = computeCoverage(
+    transition.beforeBoard,
+    EMERGENCY_COVERAGE_REQUIREMENT,
+  ).availableQualifiedCount;
+  const coverageAfterKeep = computeCoverage(
+    transition.afterBoard,
+    EMERGENCY_COVERAGE_REQUIREMENT,
+  ).availableQualifiedCount;
+  const revenueCents = decision.winner.immediateDeltas.revenueCents;
+  const recorded = current.phase === "coverage-receipt";
+  const confirmation = recorded
+    ? `<div class="recorded" id="decision-confirmation" role="status" tabindex="-1">
+        <strong>${current.coverageChoice === "hold" ? "Override recorded — window held open." : "Keep recorded — maintenance job accepted."}</strong>
+        <span>Emergency coverage is now ${current.coverage} tech. The meter and event log updated immediately.</span>
+      </div>`
+    : "";
+  return `
+    <header class="decision-header">
+      <p class="eyebrow">Event 2 · Live coverage tradeoff</p>
+      <h1 id="coverage-title" tabindex="-1">Use the last qualified afternoon window?</h1>
+    </header>
+    <div class="decision-content">
+      <p class="decision-lede">The maintenance job has positive immediate value. Accepting it changes emergency coverage from ${coverageBefore} to ${coverageAfterKeep}.</p>
+      ${renderSharedDecisionGrammar({
+        chosen: {
+          rankLabel: "Dispatcher chose · Keep",
+          title: "Accept maintenance job",
+          minutes: `${decision.winner.immediateDeltas.timeMinutes} assignment min · emergency coverage ${coverageAfterKeep}`,
+          dollars: `+${formatMoney(revenueCents)} scheduled revenue`,
+        },
+        second: {
+          rankLabel: "Override alternative",
+          title: "Hold window open",
+          minutes: `0 assignment min · emergency coverage ${coverageBefore}`,
+          dollars: `${formatMoney(revenueCents)} at risk`,
+        },
+        keepLabel: "Keep · Accept maintenance job",
+        overrideLabel: "Override · Hold window open",
+        keepAction: "accept-coverage",
+        overrideAction: "hold-coverage",
+        disabled: recorded,
+      })}
+      ${confirmation}
+      ${recorded ? `<button class="primary-button wide continue-button" type="button" data-action="continue-emergency">Continue to 2:03 PM emergency</button>` : ""}
+      <details class="why-drawer">
+        <summary>Why the dispatcher preferred the maintenance job</summary>
+        <div class="why-content">
+          <article class="why-block"><h3>Immediate reasons</h3><ul>${evidence.immediateReasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}<li>${formatMoney(revenueCents)} of immediate scheduled revenue</li></ul></article>
+          <article class="why-block"><h3>Second alternative</h3><p>Holding the window adds 0 assignment minutes and leaves ${formatMoney(revenueCents)} at risk.</p></article>
+          <article class="why-block"><h3>Immediate counterfactual</h3><p>Keep schedules ${formatMoney(revenueCents)} now. Override schedules ${formatMoney(0)} now.</p></article>
+          <article class="why-block hard-rule"><h3>Explicit hard constraints</h3><p>${evidence.hardConstraints.map((entry) => `${escapeHtml(entry.name)}: ${escapeHtml(entry.plainReason.toLowerCase())} (${escapeHtml(entry.reasonCode)})`).join("; ") || "No hard-constraint exclusions."}</p></article>
+          <article class="why-block omitted"><h3>Downstream consequence the policy did not use</h3><p>Assigning the job changes qualified emergency coverage after 2 PM from ${coverageBefore} to ${coverageAfterKeep}. Coverage is descriptive engine evidence and never a ranking factor.</p></article>
+        </div>
+      </details>
+    </div>`;
+}
+
+function renderEmergency(current: ConsoleState): string {
+  const outcome = current.result?.outcomes[2];
+  const maintenance = current.result?.outcomes[1];
+  if (outcome === undefined || maintenance === undefined) return "";
+  const covered = outcome.serviceOutcomeCode === "COMPLETED_IN_WINDOW";
+  return `<main id="main-content" class="console-shell">
+    ${renderSignals()}
+    <section class="emergency-panel ${covered ? "covered" : "deferred"}" aria-labelledby="emergency-title">
+      <div class="event-heading"><div><p class="eyebrow">Event 3 · Emergency</p><h1 id="emergency-title" tabindex="-1">No-cool call arrives</h1></div><span class="time-stamp">2:03 PM</span></div>
+      <div class="outcome-first"><h2>${covered ? "Same-day emergency coverage is available." : "Emergency coverage is zero."}</h2><p>${covered ? "The no-cool emergency receives same-day service." : "The no-cool call moves to tomorrow."}</p></div>
+      <div class="revenue-second"><strong>Revenue consequence · secondary</strong><p>${covered ? `The ${formatMoney(maintenance.immediateDeltas.revenueCents)} tune-up was deferred. The emergency is completed today for +${formatMoney(outcome.immediateDeltas.revenueCents)}.` : `The +${formatMoney(maintenance.immediateDeltas.revenueCents)} maintenance job remains scheduled. Emergency revenue moves with the call to tomorrow.`}</p></div>
+      ${renderEventLog(current)}
+      <button class="primary-button wide" type="button" data-action="open-debrief">Open causal debrief</button>
+    </section>
+    ${renderProvenance()}
+  </main>`;
+}
+
+function renderDebrief(current: ConsoleState): string {
+  const comparison = current.comparison;
+  if (comparison === null) return "";
+  const playerMaintenance = comparison.player.outcomes[1];
+  const playerEmergency = comparison.player.outcomes[2];
+  const baselineEmergency = comparison.baseline.outcomes[2];
+  if (playerMaintenance === undefined || playerEmergency === undefined || baselineEmergency === undefined) return "";
+  const held = playerMaintenance.serviceOutcomeCode === "DECLINED";
+  const maintenanceRevenue = comparison.baseline.outcomes[1]?.immediateDeltas.revenueCents ?? 0;
+  const emergencyRevenue = playerEmergency.immediateDeltas.revenueCents;
+  const netCents = held ? emergencyRevenue - maintenanceRevenue : 0;
+  const satisfactionDifference = playerEmergency.satisfactionDelta - baselineEmergency.satisfactionDelta;
+  return `<main id="main-content" class="console-shell">
+    <section class="debrief-panel" aria-labelledby="debrief-title">
+      <div class="ledger-heading"><div><p class="eyebrow">Causal debrief · branch ledger</p><h1 id="debrief-title" tabindex="-1">What changed, and why</h1></div><span class="not-score">No overall score</span></div>
+      <p class="trace-intro">Your day is compared with the untouched AI-only day. Both branches use the same seed, arrivals, durations, travel times, and promised windows.</p>
+      <div class="branch-ledger">
+        <div class="ledger-row"><div class="ledger-key">2:03 PM · No-cool emergency</div><div class="ledger-value">${held ? "You kept the last qualified afternoon slot open." : "You accepted the tune-up and used the last qualified afternoon slot."}</div></div>
+        ${held ? `
+          <div class="ledger-row"><div class="ledger-key">Revenue</div><div class="ledger-value">Deferred tune-up: −${formatMoney(maintenanceRevenue)}<br>Emergency completed today: +${formatMoney(emergencyRevenue)}</div></div>
+          <div class="ledger-row"><div class="ledger-key">Customer outcome</div><div class="ledger-value">+${satisfactionDifference} satisfaction · one same-day emergency</div></div>
+          <div class="ledger-row net-difference"><div class="ledger-key">Compared with AI-only day</div><div class="ledger-value">Net difference from AI-only day: +${formatMoney(netCents)} and one same-day emergency</div></div>` : `
+          <div class="ledger-row"><div class="ledger-key">Service level</div><div class="ledger-value">The 2:03 PM no-cool call moved to tomorrow.</div></div>
+          <div class="ledger-row"><div class="ledger-key">Revenue</div><div class="ledger-value">+${formatMoney(maintenanceRevenue)} maintenance scheduled · emergency revenue deferred</div></div>
+          <div class="ledger-row net-difference"><div class="ledger-key">Compared with AI-only day</div><div class="ledger-value">This matches the AI-only emergency-coverage outcome.</div></div>`}
+      </div>
+      <div class="causal-summary"><strong>The earlier decision that caused this outcome</strong><span>${held ? "At 11:40 AM you held the last qualified afternoon window open. That decision covered the 2:03 PM emergency." : "At 11:40 AM, accepting the tune-up reduced emergency coverage from 1 to 0. The 2:03 PM no-cool call moved to tomorrow."}</span></div>
+      <div class="separate-measures">
+        <div><span>Revenue</span><strong>${held ? `+${formatMoney(netCents)} vs AI-only` : "Matches AI-only"}</strong></div>
+        <div><span>Drive time</span><strong>${current.routeChoice === "override" ? `${EVENT_ONE_GRAMMAR.laterMinutesSavedByOverride ?? 0} min saved later` : `${EVENT_ONE_GRAMMAR.omittedConsequence?.laterDriveMinutes ?? 0} min added later`}</strong></div>
+        <div><span>Same-day completion</span><strong>${held ? "Emergency completed today" : "Emergency moved to tomorrow"}</strong></div>
+        <div><span>Customer outcome</span><strong>${held ? `+${satisfactionDifference} satisfaction` : "No same-day emergency service"}</strong></div>
+      </div>
+      <div class="debrief-actions"><button class="secondary-button" type="button" data-action="trace">Open engineering trace</button><button class="primary-button" type="button" data-action="restart">Restart authored case study</button></div>
+    </section>
+    ${renderProvenance()}
+  </main>`;
+}
+
 function renderTrace(current: ConsoleState): string {
-  const result = current.result;
+  const result = current.comparison?.player ?? current.result;
   if (result === null) return "";
   const decision = result.decisions[0];
-  const outcome = result.outcomes[0];
-  if (decision === undefined || outcome === undefined) return "";
-  const overrides = current.routeChoice === "override"
-    ? [{ eventId: outcome.eventId, technicianId: outcome.assignedTechnicianId }]
-    : [];
-  const transition = {
-    before: decision.inputSnapshot.boardState,
-    selectedTechnicianId: outcome.assignedTechnicianId,
-    outcome,
-    after: result.finalBoard,
-  };
+  if (decision === undefined) return "";
+  const overrides = [
+    ...(current.routeChoice === "override"
+      ? [{ eventId: "event-1-guided-route", technicianId: EVENT_ONE_GRAMMAR.second.technicianId }]
+      : []),
+    ...(current.coverageChoice === "hold"
+      ? [{ eventId: "event-2-coverage-tradeoff", type: "DECLINE" }]
+      : []),
+  ];
   return `
     <main id="main-content" class="trace-shell">
       <header class="trace-heading">
@@ -298,14 +470,15 @@ function renderTrace(current: ConsoleState): string {
       <p class="trace-intro">This view is separate from the live board. It exposes the exact seeded engine inputs and outputs behind the recorded route decision.</p>
       <dl class="trace-facts">
         <div><dt>Seed</dt><dd><code>${escapeHtml(String(result.seed))}</code></dd></div>
-        <div><dt>Decision ID</dt><dd><code>${escapeHtml(decision.decisionId)}</code></dd></div>
-        <div><dt>Event ID</dt><dd><code>${escapeHtml(outcome.eventId)}</code></dd></div>
+        <div><dt>Decision IDs</dt><dd><code>${escapeHtml(result.decisions.map((entry) => entry.decisionId).join(" · "))}</code></dd></div>
+        <div><dt>Event IDs</dt><dd><code>${escapeHtml(result.outcomes.map((entry) => entry.eventId).join(" · "))}</code></dd></div>
         <div><dt>Replay path</dt><dd><code>simulateScenario(EVENT_ONE_SCENARIO, ${escapeHtml(JSON.stringify(overrides))})</code></dd></div>
       </dl>
       <div class="trace-grid">
-        ${renderJsonPanel("Input snapshot", decision.inputSnapshot)}
-        ${renderJsonPanel("State transition", transition)}
-        ${renderJsonPanel("Decision JSON", decision)}
+        ${renderJsonPanel("Initial input snapshot", decision.inputSnapshot)}
+        ${renderJsonPanel("State transitions", result.transitions)}
+        ${renderJsonPanel("Decision JSON", result.decisions)}
+        ${renderJsonPanel("Untouched baseline", current.comparison?.baseline ?? null)}
       </div>
       <nav class="source-links" aria-label="Engine source and tests">
         <a href="./src/dispatch.ts">Open dispatch engine source</a>
@@ -337,10 +510,12 @@ function updateHeader(): void {
     clock.textContent = "90 sec · not started";
   } else if (state.phase === "trace") {
     clock.textContent = "Trace · shift held";
+  } else if (state.phase === "emergency" || state.phase === "debrief") {
+    clock.textContent = "Shift frozen";
   } else {
     clock.textContent = `${state.timerRemaining} sec${state.paused ? " · paused" : " remaining"}`;
   }
-  pauseButton.disabled = state.phase !== "shift" || !state.timerStarted;
+  pauseButton.disabled = !["observation", "coverage-decision", "coverage-receipt"].includes(state.phase) || !state.timerStarted;
   pauseButton.textContent = state.paused ? "Resume" : "Pause";
 }
 
@@ -354,8 +529,14 @@ app.addEventListener("click", (event) => {
   if (action === "keep") state = recordRouteChoice(state, "keep");
   if (action === "override") state = recordRouteChoice(state, "override");
   if (action === "continue") state = continueToActiveShift(state);
+  if (action === "open-coverage") state = openCoverageDecision(state);
+  if (action === "accept-coverage") state = recordCoverageChoice(state, "accept");
+  if (action === "hold-coverage") state = recordCoverageChoice(state, "hold");
+  if (action === "continue-emergency") state = continueToEmergency(state);
+  if (action === "open-debrief") state = openDebrief(state);
   if (action === "trace") state = openTrace(state);
   if (action === "close-trace") state = closeTrace(state);
+  if (action === "restart") state = createInitialConsoleState();
   render();
   focusCurrent(action);
 });

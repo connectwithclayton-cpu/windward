@@ -41,6 +41,8 @@ export interface Job {
   readonly requiredSkills: readonly SkillCode[];
   readonly requiredCertifications: readonly CertificationCode[];
   readonly revenueCents: number;
+  readonly lateOutcomeCode?: "DEFER_TO_NEXT_DAY";
+  readonly completionSatisfactionDelta?: number;
   readonly travelMinutesByTechnician: Readonly<Record<TechnicianId, number>>;
   readonly routeDeltaMinutesByTechnician?: Readonly<Record<TechnicianId, number>>;
   readonly expectedRevenueCentsByTechnician?: Readonly<Record<TechnicianId, number>>;

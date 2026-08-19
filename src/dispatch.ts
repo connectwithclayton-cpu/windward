@@ -144,6 +144,12 @@ function normalizeInput(boardState: BoardState, job: Job) {
     requiredSkills: normalizeCodes(job.requiredSkills),
     requiredCertifications: normalizeCodes(job.requiredCertifications),
     revenueCents: job.revenueCents,
+    ...(job.lateOutcomeCode === undefined
+      ? {}
+      : { lateOutcomeCode: job.lateOutcomeCode }),
+    ...(job.completionSatisfactionDelta === undefined
+      ? {}
+      : { completionSatisfactionDelta: job.completionSatisfactionDelta }),
     travelMinutesByTechnician: Object.fromEntries(
       technicians.map((technician) => [
         technician.id,
@@ -204,6 +210,12 @@ function validateJob(job: Job): void {
   }
   assertFiniteNumber(job.durationMinutes, "job.durationMinutes", Number.EPSILON);
   assertFiniteNumber(job.revenueCents, "job.revenueCents");
+  if (
+    job.completionSatisfactionDelta !== undefined &&
+    !Number.isFinite(job.completionSatisfactionDelta)
+  ) {
+    throw new RangeError("job.completionSatisfactionDelta must be finite");
+  }
 }
 
 function normalizeTechnician(technician: Technician, seenIds: Set<string>): Technician {
