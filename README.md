@@ -22,8 +22,8 @@ plans across an exact weighted set of 100 matched worlds.
 
 [Open Case 2 · Risk appetite directly][risk-console].
 
-[live-console]: https://connectwithclayton-cpu.github.io/windward/
-[risk-console]: https://connectwithclayton-cpu.github.io/windward/#risk-appetite
+[live-console]: https://connectwithclayton.github.io/windward/
+[risk-console]: https://connectwithclayton.github.io/windward/#risk-appetite
 
 The dependency-free static client in `index.html` imports the compiled engine and
 console layer from `dist/`. The Horizon case presents the fixed

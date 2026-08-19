@@ -11,7 +11,7 @@ This file is the project's committed home for project-intrinsic agent knowledge:
   engine-to-interface binding lives under `src/console/` and must not duplicate
   ranking or eligibility rules.
 - `.github/workflows/pages.yml` builds and publishes the minimal static artifact
-  to `https://connectwithclayton-cpu.github.io/windward/` on pushes to `main`.
+  to `https://connectwithclayton.github.io/windward/` on pushes to `main`.
 - The authored scenario, including its empty-override comparison baseline,
   lives in `src/console/scenario.ts`; finale outcomes must come from replay
   evidence rather than parallel UI state.
