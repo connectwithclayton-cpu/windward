@@ -27,37 +27,68 @@ represents any real vendor’s model.
 ## Experience contract
 
 - The viewer is a player, not a spectator.
-- A complete first session lasts two to three minutes.
+- A complete Case 1 session lasts two to three minutes; Case 2 is a separately
+  authored decision-and-replay case.
 - The scenario is hand-authored rather than procedural.
 - The experience does not auto-play. It begins only after the player starts it.
-- One deterministic scenario supports operations, AI/product, engineering, and
-  generalist readers through progressive disclosure.
-- Every scored mistake has one cause: the dispatcher makes a locally reasonable
-  choice that is globally bad because it does not look ahead.
+- Each authored case uses one deterministic scenario to support operations,
+  AI/product, engineering, and generalist readers through progressive disclosure.
+- Every scored Horizon mistake has one cause: the dispatcher makes a locally
+  reasonable choice that is globally bad because it does not look ahead.
 - The ending is a causal debrief, not a score.
 
-The active shift is 90 seconds. Orientation, the frozen guided decision, and the
-debrief sit outside that clock so a cold reviewer can read and experiment
-without losing the scenario.
+Case 1's active shift is 90 seconds. Its orientation, frozen guided decision,
+and debrief sit outside that clock so a cold reviewer can read and experiment
+without losing the scenario. Case 2 has no countdown: its decision is frozen,
+then it shows one fixed world before the full policy replay.
+
+### Case 2: Risk appetite
+
+Risk appetite is a separate authored static case, not another event in the
+Horizon shift. It states the business's **$15,000 one-job loss limit before the
+choice** and asks whether the downside of each plan fits that policy. The plans
+are fictional assumptions, not measured HVAC failure rates, real prices,
+actuarial evidence, or advice:
+
+| Plan | Routine worlds | Part-delay worlds | Average | Loss-limit breaches |
+|---|---|---|---|---|
+| Direct repair | 85 of 100 at +$14,000 | 15 of 100 at −$40,000 | +$5,900 | 15 |
+| Protect the weekend | 85 of 100 at +$5,000 | 15 of 100 at −$8,000 | +$3,050 | 0 |
+
+The expected-value-only optimiser therefore prefers the strictly higher-average
+**Direct repair** plan. It resolves fixed favorable **world 042** first and
+labels it as one world, not the verdict. In that narrated world, protecting the
+weekend is **$9,000 worse** than direct repair. The debrief then replays both
+plans over the identical explicit weighted set of 100 authored worlds and says
+that a sound decision can cost money on one day; one outcome does not grade a
+risk decision.
+
+The risk evaluator and replay use integer cents, evidence-bearing decisions,
+stable narrative membership, exact world weights totaling 10,000 basis points,
+matched independent branches, aggregate fingerprinting, and fail-closed
+validation for malformed weights, duplicate or unknown IDs, and branch drift.
+The loss limit is policy evidence after ranking, not an additional ranking
+factor.
 
 ## Four reading depths
 
-Windward serves four audiences in one artifact without placing all four levels
-of detail on the live board at once.
+Horizon serves four audiences in one artifact without placing all four levels of
+detail on the live board at once. Risk appetite uses the same progressive
+disclosure through its plan cards, narrated world, policy replay, and trace.
 
 | Reading depth | Audience need | How Windward serves it |
 |---|---|---|
 | Immediate action | Generalist | The start screen states the role, each decision presents one warning and two explicit actions, and every action produces visible cause and effect. No field-service knowledge is required. |
-| Operational state | Operations | The five-lane board shows schedule state, qualifications, availability, the heat context, and remaining emergency coverage. Route detail appears only for the selected route decision. |
-| Decision reasoning | AI/product | A **Why** drawer shows the winner, ranked alternatives, plain-language factor contributions, ineligible options, and the immediate counterfactual costs. It also states what the greedy policy omitted. |
-| Reproducible trace | Engineering | After the run, an engineering trace exposes the seed, decision IDs or input snapshots, state transitions, decision JSON, replay path, and links to the pure-engine source and tests. |
+| Operational state | Operations | Horizon's five-lane board shows schedule state, qualifications, availability, the heat context, and remaining emergency coverage. Route detail appears only for the selected route decision. |
+| Decision reasoning | AI/product | Horizon's **Why** drawer shows the winner, ranked alternatives, plain-language factor contributions, ineligible options, and immediate counterfactual costs. It also states what the greedy policy omitted. |
+| Reproducible trace | Engineering | After either case, an engineering trace exposes the relevant input snapshot, decision evidence, replay path, and links to the pure-engine source and tests. |
 
 The default reading order is immediate action, operational state, decision
 reasoning, then reproducible trace. The generalist and operations bridge is the
 default surface; deeper AI/product and engineering material is available on
 demand and after the run.
 
-## Scenario
+## Case 1: Horizon scenario
 
 ### Setting
 
@@ -76,9 +107,8 @@ Five lanes are deliberate: eight-lane boards are common in real dispatch
 products but are unreadable to a cold reviewer when combined with instructions
 and AI explanations.
 
-The scenario has one teaching arc: route lookahead makes the dispatcher’s
-myopia visible, then the player applies the same insight to uncertain future
-demand.
+Horizon has one teaching arc: route lookahead makes the dispatcher’s myopia
+visible, then the player applies the same insight to uncertain future demand.
 
 ### Start and orientation
 
@@ -290,8 +320,8 @@ dispatcher considered reserve capacity when ranking the immediate job.
 
 ### Determinism and baseline
 
-All scenario behavior is seeded: the same seed produces the same day. Arrival
-order, job durations, travel times, and every other exogenous event are frozen.
+Horizon behavior is seeded: the same seed produces the same day. Arrival order,
+job durations, travel times, and every other exogenous event are frozen.
 
 The unsupervised baseline is the same simulation from the same initial state
 with an empty override list. The player branch and baseline branch differ only
@@ -332,7 +362,7 @@ Revenue, drive time, same-day completion, and customer outcome remain separate
 measures. There is no overall score. A losing player must be able to point to
 the exact decision where the outcome changed.
 
-## Validation protocol
+## Case 1 validation protocol
 
 The design validation called for a disposable clickable storyboard in paper or
 HTML.

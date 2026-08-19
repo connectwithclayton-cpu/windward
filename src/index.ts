@@ -10,6 +10,29 @@ export {
   runPlayerAndBaseline,
   simulateScenario,
 } from "./simulation.js";
+export {
+  RISK_APPETITE_CASE,
+  rankPlans,
+  replayRiskWorld,
+  runRiskCohort,
+  runRiskCohortAndBaseline,
+  validateRiskBranchComparison,
+  validateRiskCaseDefinition,
+} from "./risk.js";
+export type {
+  PlanDecision,
+  PlanDecisionInput,
+  RankedRiskPlan,
+  RiskBranchComparison,
+  RiskCaseDefinition,
+  RiskCohortResult,
+  RiskPlanId,
+  RiskPlanInput,
+  RiskPlanOutcomeInput,
+  RiskWorldCondition,
+  RiskWorldDefinition,
+  RiskWorldResult,
+} from "./risk.js";
 export type {
   BranchComparison,
   ExogenousEvent,

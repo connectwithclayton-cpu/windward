@@ -18,6 +18,10 @@ This file is the project's committed home for project-intrinsic agent knowledge:
 - Keep coverage descriptive and separate from ranking. The dispatcher's missing
   lookahead and reserve heuristic are intentional product behavior, and a job's
   explicit promised window is replay/outcome data rather than a scoring factor.
+- Case two's expected-value-only evaluator and exact weighted-world replay live
+  in `src/risk.ts`; its console binding lives in `src/console/risk-runtime.ts`
+  and `src/console/risk-view.ts`. Keep these separate from `dispatch` and case
+  one's replay, and derive every displayed aggregate from engine evidence.
 
 ## Maintaining this file
 
