@@ -122,6 +122,41 @@ test("malformed case weights, duplicate IDs, unknown plans, and branch drift fai
     () => validateRiskCaseDefinition(invalidWeightCase),
     /one percent weight/,
   );
+
+  const unknownWorldCase = {
+    ...RISK_APPETITE_CASE,
+    worlds: RISK_APPETITE_CASE.worlds.map((world, index) =>
+      index === 0 ? { ...world, id: "world-101" } : world,
+    ),
+  };
+  assert.throws(
+    () => validateRiskCaseDefinition(unknownWorldCase),
+    /world manifest drifted/,
+  );
+
+  const unknownNarrativeCase = {
+    ...RISK_APPETITE_CASE,
+    narrativeWorldId: "world-101",
+  };
+  assert.throws(
+    () => validateRiskCaseDefinition(unknownNarrativeCase),
+    /fixed authored world-042/,
+  );
+
+  const unknownPlanCase = {
+    ...RISK_APPETITE_CASE,
+    decisionInput: {
+      ...RISK_APPETITE_CASE.decisionInput,
+      plans: RISK_APPETITE_CASE.decisionInput.plans.map((plan, index) =>
+        index === 0 ? { ...plan, id: "unknown-plan" } : plan,
+      ),
+    },
+  };
+  assert.throws(
+    () => validateRiskCaseDefinition(unknownPlanCase),
+    /Unknown risk plan ID/,
+  );
+
   assert.throws(
     () => runRiskCohort(RISK_APPETITE_CASE, "unknown-plan"),
     /Unknown risk plan ID/,
@@ -148,5 +183,34 @@ test("malformed case weights, duplicate IDs, unknown plans, and branch drift fai
   assert.throws(
     () => validateRiskBranchComparison(drifted),
     /exogenous worlds drifted/,
+  );
+
+  const aggregateDrift = {
+    ...valid,
+    player: { ...valid.player, averageNetValueCents: valid.player.averageNetValueCents + 1 },
+  };
+  assert.throws(
+    () => validateRiskBranchComparison(aggregateDrift),
+    /branch evidence drifted/,
+  );
+
+  const outcomeDrift = {
+    ...valid,
+    player: {
+      ...valid.player,
+      worlds: valid.player.worlds.map((world, index) =>
+        index === 0 ? { ...world, netValueCents: world.netValueCents + 1 } : world,
+      ),
+    },
+  };
+  assert.throws(
+    () => validateRiskBranchComparison(outcomeDrift),
+    /branch evidence drifted/,
+  );
+
+  const fingerprintDrift = { ...valid, aggregateFingerprint: "00000000" };
+  assert.throws(
+    () => validateRiskBranchComparison(fingerprintDrift),
+    /branch evidence drifted/,
   );
 });

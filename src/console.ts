@@ -581,6 +581,7 @@ function updateHeader(): void {
         : "Case 2 · decision frozen";
     pauseButton.disabled = true;
     pauseButton.textContent = "Pause";
+    return;
   } else if (!state.timerStarted) {
     clock.textContent = "90 sec · not started";
   } else if (state.phase === "trace") {
@@ -632,6 +633,7 @@ app.addEventListener("click", (event) => {
 });
 
 pauseButton.addEventListener("click", () => {
+  if (selectedCase === "risk") return;
   state = togglePause(state);
   render();
 });

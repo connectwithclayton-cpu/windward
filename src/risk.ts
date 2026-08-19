@@ -273,6 +273,15 @@ export function runRiskCohortAndBaseline(
   playerPlanId: RiskPlanId,
 ): RiskBranchComparison {
   validateRiskCaseDefinition(definition);
+  const comparison = buildRiskBranchComparison(definition, playerPlanId);
+  validateRiskBranchComparison(comparison);
+  return Object.freeze(comparison);
+}
+
+function buildRiskBranchComparison(
+  definition: RiskCaseDefinition,
+  playerPlanId: RiskPlanId,
+): RiskBranchComparison {
   const decision = rankPlans(definition.decisionInput);
   const player = runRiskCohort(definition, playerPlanId);
   const baseline = runRiskCohort(definition, decision.winner.planId);
@@ -307,26 +316,42 @@ export function runRiskCohortAndBaseline(
       baseline: baseline.worlds,
     }),
   } satisfies RiskBranchComparison;
-  validateRiskBranchComparison(comparison);
-  return Object.freeze(comparison);
+  return comparison;
 }
 
 export function validateRiskCaseDefinition(definition: RiskCaseDefinition): void {
+  if (definition.caseVersion !== RISK_APPETITE_CASE.caseVersion) {
+    throw new Error("Risk case version is not the canonical authored version");
+  }
+  if (definition.seed !== RISK_APPETITE_CASE.seed) {
+    throw new Error("Risk case seed is not the canonical authored seed");
+  }
   if (definition.caseVersion !== definition.decisionInput.caseVersion) {
     throw new Error("Risk case and decision input versions do not match");
   }
-  if (!Number.isInteger(definition.lossLimitCents) || definition.lossLimitCents <= 0) {
-    throw new Error("Risk loss limit must be a positive integer number of cents");
+  if (definition.lossLimitCents !== RISK_APPETITE_CASE.lossLimitCents) {
+    throw new Error("Risk loss limit drifted from the canonical authored case");
   }
   if (definition.worlds.length !== 100) {
     throw new Error("Risk cohort must contain exactly 100 weighted worlds");
   }
+  if (definition.narrativeWorldId !== NARRATIVE_WORLD_ID) {
+    throw new Error("Narrative world must be the fixed authored world-042");
+  }
   const ids = new Set<string>();
   let totalWeight = 0;
   const conditionWeights = new Map<RiskWorldCondition, number>();
-  for (const world of definition.worlds) {
+  for (const [index, world] of definition.worlds.entries()) {
     if (ids.has(world.id)) throw new Error(`Duplicate risk world ID: ${world.id}`);
     ids.add(world.id);
+    const expectedWorld = RISK_WORLDS[index];
+    if (
+      expectedWorld === undefined ||
+      world.id !== expectedWorld.id ||
+      world.condition !== expectedWorld.condition
+    ) {
+      throw new Error("Risk world manifest drifted from the canonical authored worlds");
+    }
     if (world.weightBasisPoints !== ONE_WORLD_WEIGHT) {
       throw new Error("Every authored risk world must carry one percent weight");
     }
@@ -339,11 +364,14 @@ export function validateRiskCaseDefinition(definition: RiskCaseDefinition): void
   if (totalWeight !== BASIS_POINT_TOTAL) {
     throw new Error(`Risk world weights must sum to ${BASIS_POINT_TOTAL} basis points`);
   }
-  if (!ids.has(definition.narrativeWorldId)) {
-    throw new Error("Narrative world must be a member of the risk cohort");
-  }
   validateDecisionInput(definition.decisionInput);
   for (const plan of definition.decisionInput.plans) {
+    const expectedPlan = RISK_APPETITE_CASE.decisionInput.plans.find(
+      (candidate) => candidate.id === plan.id,
+    );
+    if (expectedPlan === undefined || !sameJson(plan, expectedPlan)) {
+      throw new Error(`Risk plan ${plan.id} drifted from the canonical authored input`);
+    }
     for (const outcome of plan.outcomes) {
       if ((conditionWeights.get(outcome.condition) ?? 0) !== outcome.weightBasisPoints) {
         throw new Error(`Plan ${plan.id} weights drift from the authored world manifest`);
@@ -374,15 +402,18 @@ export function validateRiskBranchComparison(comparison: RiskBranchComparison): 
       throw new Error("Risk player and baseline exogenous worlds drifted");
     }
   }
-  if (!playerWorlds.some((world) => world.worldId === comparison.narrativeWorldId)) {
-    throw new Error("Narrative world is absent from the paired replay");
+  if (!isRiskPlanId(comparison.player.planId)) {
+    throw new Error("Risk player branch has an unknown plan ID");
   }
-  if (
-    comparison.narrative.player.worldId !== comparison.narrativeWorldId ||
-    comparison.narrative.baseline.worldId !== comparison.narrativeWorldId ||
-    comparison.narrative.player.condition !== comparison.narrative.baseline.condition
-  ) {
-    throw new Error("Narrative world drifted from the paired replay");
+  if (!isRiskPlanId(comparison.baseline.planId)) {
+    throw new Error("Risk baseline branch has an unknown plan ID");
+  }
+  const expected = buildRiskBranchComparison(
+    RISK_APPETITE_CASE,
+    comparison.player.planId,
+  );
+  if (!sameJson(comparison, expected)) {
+    throw new Error("Risk branch evidence drifted from the deterministic replay");
   }
 }
 
@@ -408,13 +439,19 @@ function evaluatePlan(plan: RiskPlanInput): Omit<RankedRiskPlan, "rank"> {
 
 function validateDecisionInput(input: PlanDecisionInput): void {
   if (input.plans.length < 2) throw new Error("Plan decision requires at least two plans");
-  const ids = new Set<RiskPlanId>();
+  const ids = new Set<string>();
   for (const plan of input.plans) {
+    if (!isRiskPlanId(plan.id)) {
+      throw new Error(`Unknown risk plan ID: ${String(plan.id)}`);
+    }
     if (ids.has(plan.id)) throw new Error(`Duplicate risk plan ID: ${plan.id}`);
     ids.add(plan.id);
     if (plan.outcomes.length === 0) throw new Error(`Plan ${plan.id} has no outcomes`);
     const conditions = new Set<RiskWorldCondition>();
     const totalWeight = plan.outcomes.reduce((total, outcome) => {
+      if (!isRiskWorldCondition(outcome.condition)) {
+        throw new Error(`Plan ${plan.id} contains an unknown outcome condition`);
+      }
       if (conditions.has(outcome.condition)) {
         throw new Error(`Plan ${plan.id} repeats condition ${outcome.condition}`);
       }
@@ -438,6 +475,18 @@ function validateDecisionInput(input: PlanDecisionInput): void {
       throw new Error(`Plan ${plan.id} weights must sum to ${BASIS_POINT_TOTAL} basis points`);
     }
   }
+}
+
+function isRiskPlanId(value: unknown): value is RiskPlanId {
+  return value === "direct-repair" || value === "protect-weekend";
+}
+
+function isRiskWorldCondition(value: unknown): value is RiskWorldCondition {
+  return value === "ROUTINE_PART_AVAILABLE" || value === "PART_UNAVAILABLE_UNTIL_MONDAY";
+}
+
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function freezePlan(plan: RiskPlanInput): RiskPlanInput {
