@@ -548,10 +548,10 @@ function renderTrace(current: ConsoleState): string {
         ${renderJsonPanel("Untouched baseline", current.comparison?.baseline ?? null)}
       </div>
       <nav class="source-links" aria-label="Engine source and tests">
-        <a href="./src/dispatch.ts">Open dispatch engine source</a>
-        <a href="./src/simulation.ts">Open replay source</a>
-        <a href="./test/dispatch.test.mjs">Open dispatch tests</a>
-        <a href="./test/replay.test.mjs">Open replay tests</a>
+        <a href="https://github.com/connectwithclayton-cpu/windward/blob/main/src/dispatch.ts">Open dispatch engine source</a>
+        <a href="https://github.com/connectwithclayton-cpu/windward/blob/main/src/simulation.ts">Open replay source</a>
+        <a href="https://github.com/connectwithclayton-cpu/windward/blob/main/test/dispatch.test.mjs">Open dispatch tests</a>
+        <a href="https://github.com/connectwithclayton-cpu/windward/blob/main/test/replay.test.mjs">Open replay tests</a>
       </nav>
       ${renderProvenance()}
     </main>`;

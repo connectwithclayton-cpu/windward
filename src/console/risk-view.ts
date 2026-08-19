@@ -295,7 +295,7 @@ function renderRiskTrace(state: RiskConsoleState): string {
       ${renderJsonPanel("Player cohort", comparison.player)}
       ${renderJsonPanel("Untouched AI-only cohort", comparison.baseline)}
     </div>
-    <nav class="source-links" aria-label="Risk engine source and tests"><a href="./src/risk.ts">Open risk engine source</a><a href="./test/risk.test.mjs">Open risk replay tests</a></nav>
+    <nav class="source-links" aria-label="Risk engine source and tests"><a href="https://github.com/connectwithclayton-cpu/windward/blob/main/src/risk.ts">Open risk engine source</a><a href="https://github.com/connectwithclayton-cpu/windward/blob/main/test/risk.test.mjs">Open risk replay tests</a></nav>
     ${renderRiskProvenance()}
   </main>`;
 }

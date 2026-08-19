@@ -87,6 +87,9 @@ test("both choice branches reach policy debriefs that separate luck from quality
   assert.match(directHtml, /lucky result did not make the exposure compliant/);
 
   const trace = openRiskTrace(protectedDebrief);
-  assert.match(renderRiskConsole(trace), /100 worlds · 10,000 basis points/);
+  const traceHtml = renderRiskConsole(trace);
+  assert.match(traceHtml, /100 worlds · 10,000 basis points/);
+  assert.match(traceHtml, /https:\/\/github\.com\/connectwithclayton-cpu\/windward\/blob\/main\/src\/risk\.ts/);
+  assert.match(traceHtml, /https:\/\/github\.com\/connectwithclayton-cpu\/windward\/blob\/main\/test\/risk\.test\.mjs/);
   assert.equal(closeRiskTrace(trace).phase, "debrief");
 });
