@@ -1,7 +1,7 @@
 # Windward design specification
 
 **Date:** 2026-08-18\
-**Status:** Approved design; implementation is not part of this specification
+**Status:** Approved design; implemented by the static console and pure engine
 
 ## Product definition
 
@@ -316,9 +316,11 @@ the exact decision where the outcome changed.
 
 ## Validation protocol
 
-Before production implementation, build only a disposable clickable storyboard
-in paper or HTML. It contains the briefing, one route decision, the reserve
-choice, the emergency, and the causal debrief. It does not require the
+The design validation called for a disposable clickable storyboard in paper or
+HTML.
+It contains the briefing, one route decision, the reserve choice, the
+emergency, and the causal debrief. The committed storyboard remains a separate
+validation artifact and does not define the production console or require the
 production engine.
 
 Test the storyboard with five people who have never worked in field service. Do
@@ -379,9 +381,9 @@ It has no backend, accounts, database, or persistence. This zero-infrastructure
 architecture is intentional so the public demo can continue to work years from
 now.
 
-This specification authorizes no engine code, UI code, scaffolding, dependency,
-or production storyboard. Those belong to separate implementation and
-validation tasks.
+The production implementation is maintained separately from this design
+specification: the static console consumes the pure engine, while the
+storyboard remains a disposable validation artifact.
 
 ## Documentation and provenance requirements
 
