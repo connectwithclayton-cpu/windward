@@ -17,10 +17,6 @@ causal branch-ledger debrief.
 
 ## Supervision console
 
-[Play Windward in your browser][live-console].
-
-[live-console]: https://connectwithclayton-cpu.github.io/windward/
-
 The dependency-free static client in `index.html` imports the compiled engine and
 console layer from `dist/`. It presents the fixed five-technician board, the two
 persistent operational signals, the shared Keep/Override decision grammar, the
