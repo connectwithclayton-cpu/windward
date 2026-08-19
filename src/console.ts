@@ -24,6 +24,18 @@ import {
   EVENT_ONE_SCENARIO,
   ROSTER,
 } from "./console/scenario.js";
+import {
+  closeRiskTrace,
+  continueToNarratedWorld,
+  createInitialRiskConsoleState,
+  openRiskDebrief,
+  openRiskDistribution,
+  openRiskTrace,
+  recordRiskChoice,
+  startRiskCase,
+  type RiskConsoleState,
+} from "./console/risk-runtime.js";
+import { renderCaseCards, renderRiskConsole } from "./console/risk-view.js";
 
 const app = requireElement<HTMLElement>("#app");
 const clock = requireElement<HTMLElement>("#shift-clock");
@@ -31,9 +43,16 @@ const pauseButton = requireElement<HTMLButtonElement>("#pause-button");
 const restartButton = requireElement<HTMLButtonElement>("#restart-button");
 
 let state = createInitialConsoleState();
+let riskState = createInitialRiskConsoleState();
+let selectedCase: "horizon" | "risk" =
+  globalThis.location?.hash === "#risk-appetite" ? "risk" : "horizon";
 
 function render(): void {
-  app.innerHTML = state.phase === "trace" ? renderTrace(state) : renderConsole(state);
+  app.innerHTML = selectedCase === "risk"
+    ? renderRiskConsole(riskState)
+    : state.phase === "trace"
+      ? renderTrace(state)
+      : renderConsole(state);
   updateHeader();
 }
 
@@ -80,6 +99,7 @@ function renderBriefing(current: ConsoleState): string {
         <section class="briefing-card" role="dialog" aria-modal="true" aria-labelledby="briefing-title">
           <p class="eyebrow">Morning dispatch · Central Florida</p>
           <h1 id="briefing-title" tabindex="-1">You supervise an AI dispatcher.</h1>
+          ${renderCaseCards("horizon")}
           <p class="briefing-copy">The dispatcher schedules five technicians one job at a time. Compare what it chose with what it ranked second, then choose <strong>Keep</strong> or <strong>Override</strong>.</p>
           <p class="safe-copy"><span aria-hidden="true">✓</span> The first decision is frozen. There is no time pressure and no penalty. The 90-second clock starts only after you finish reviewing that decision.</p>
           <button class="primary-button wide" type="button" data-action="start">Start 90-second shift</button>
@@ -553,7 +573,15 @@ function renderProvenance(): string {
 }
 
 function updateHeader(): void {
-  if (!state.timerStarted) {
+  if (selectedCase === "risk") {
+    clock.textContent = riskState.phase === "briefing"
+      ? "Case 2 · not started"
+      : riskState.phase === "trace"
+        ? "Case 2 · trace"
+        : "Case 2 · decision frozen";
+    pauseButton.disabled = true;
+    pauseButton.textContent = "Pause";
+  } else if (!state.timerStarted) {
     clock.textContent = "90 sec · not started";
   } else if (state.phase === "trace") {
     clock.textContent = "Trace · shift held";
@@ -571,6 +599,21 @@ app.addEventListener("click", (event) => {
   if (!(target instanceof Element)) return;
   const action = target.closest<HTMLElement>("[data-action]")?.dataset.action;
   if (action === undefined) return;
+
+  if (selectedCase === "risk") {
+    if (action === "start-risk") riskState = startRiskCase(riskState);
+    if (action === "keep-risk") riskState = recordRiskChoice(riskState, "direct-repair");
+    if (action === "protect-risk") riskState = recordRiskChoice(riskState, "protect-weekend");
+    if (action === "continue-risk-world") riskState = continueToNarratedWorld(riskState);
+    if (action === "open-risk-distribution") riskState = openRiskDistribution(riskState);
+    if (action === "open-risk-debrief") riskState = openRiskDebrief(riskState);
+    if (action === "open-risk-trace") riskState = openRiskTrace(riskState);
+    if (action === "close-risk-trace") riskState = closeRiskTrace(riskState);
+    if (action === "restart-risk") riskState = createInitialRiskConsoleState();
+    render();
+    focusCurrent(action);
+    return;
+  }
 
   if (action === "start") state = startShift(state);
   if (action === "keep") state = recordRouteChoice(state, "keep");
@@ -594,12 +637,17 @@ pauseButton.addEventListener("click", () => {
 });
 
 restartButton.addEventListener("click", () => {
-  state = createInitialConsoleState();
+  if (selectedCase === "risk") {
+    riskState = createInitialRiskConsoleState();
+  } else {
+    state = createInitialConsoleState();
+  }
   render();
   focusCurrent("restart");
 });
 
 window.setInterval(() => {
+  if (selectedCase === "risk") return;
   const next = tick(state);
   if (next !== state) {
     state = next;
@@ -609,7 +657,9 @@ window.setInterval(() => {
 
 function focusCurrent(action: string): void {
   window.requestAnimationFrame(() => {
-    const selector = action === "keep" || action === "override"
+    const selector = action === "keep-risk" || action === "protect-risk"
+      ? "#risk-confirmation"
+      : action === "keep" || action === "override"
       ? "#decision-confirmation"
       : action === "continue"
         ? "#shift-active-title"
@@ -617,6 +667,13 @@ function focusCurrent(action: string): void {
     app.querySelector<HTMLElement>(selector)?.focus();
   });
 }
+
+window.addEventListener?.("hashchange", () => {
+  selectedCase = globalThis.location?.hash === "#risk-appetite" ? "risk" : "horizon";
+  if (selectedCase === "risk") riskState = createInitialRiskConsoleState();
+  render();
+  focusCurrent("case-change");
+});
 
 function requireElement<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);

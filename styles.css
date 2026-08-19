@@ -286,6 +286,102 @@ p, h1, h2, h3, li, dt, dd, button, summary, code { overflow-wrap: anywhere; }
 .source-links { display: flex; flex-wrap: wrap; gap: .55rem; margin-top: 1rem; }
 .source-links a { padding: .58rem .7rem; border: 1px solid var(--navy); border-radius: .35rem; background: white; font-size: .78rem; font-weight: 800; }
 
+.case-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; margin: .9rem 0; }
+.case-card { display: grid; min-width: 0; gap: .22rem; padding: .72rem; border: 1px solid var(--line); border-radius: .48rem; color: var(--ink); background: var(--surface-quiet); text-decoration: none; }
+.case-card span { color: var(--teal); font-size: .65rem; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.case-card strong { font-size: .76rem; line-height: 1.38; }
+.case-card.is-current { border: 2px solid var(--teal); background: var(--teal-soft); }
+.case-card.is-current::after { content: "Current case"; color: var(--muted); font-size: .62rem; font-weight: 800; }
+
+.risk-shell { width: min(1180px, 100%); margin: 0 auto; padding: clamp(1rem, 2.6vw, 2.35rem); }
+.risk-briefing { min-height: calc(100vh - 68px); }
+.risk-briefing-card, .risk-decision-shell, .risk-outcome-panel, .distribution-panel {
+  width: min(980px, 100%);
+  margin: 1rem auto 0;
+  overflow: hidden;
+  border: 0;
+  border-top: 4px solid var(--teal);
+  border-radius: .8rem;
+  background: var(--surface);
+  box-shadow: var(--shadow-high);
+}
+.risk-briefing-card { width: min(720px, 100%); padding: clamp(1.35rem, 4vw, 2.7rem); }
+.risk-briefing-card h1, .risk-outcome-panel h1, .distribution-panel h1 {
+  margin: .08rem 0 .75rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 5.5vw, 3.35rem);
+  line-height: 1.03;
+  letter-spacing: -.035em;
+}
+.risk-decision-header h1 { max-width: 24ch; }
+.risk-decision-content { padding: clamp(.85rem, 2vw, 1.25rem); }
+.risk-decision-lede { margin: 0 0 1rem; font-size: 1rem; line-height: 1.48; }
+.risk-plan-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.risk-plan-card { min-width: 0; padding: .9rem; border-radius: .6rem; background: var(--surface-quiet); box-shadow: inset 0 4px 0 var(--teal); }
+.risk-plan-card.protect-weekend { box-shadow: inset 0 4px 0 var(--amber); }
+.risk-plan-card h2 { margin: .16rem 0 .7rem; font-size: 1.15rem; }
+.risk-plan-facts { display: grid; gap: .46rem; margin: 0 0 .75rem; }
+.risk-plan-facts > div { min-width: 0; padding: .55rem; border-radius: .38rem; background: rgba(255,255,255,.8); }
+.risk-plan-facts dt { color: var(--muted); font-size: .64rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase; }
+.risk-plan-facts dd { margin: .14rem 0 0; font-size: .78rem; line-height: 1.4; }
+.risk-plan-facts dd strong { font-variant-numeric: tabular-nums; }
+.risk-plan-facts .disruption-fact { background: var(--amber-soft); background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(150,97,15,.08) 8px 10px); }
+.breach-fact dd { display: flex; align-items: center; gap: .5rem; }
+.breach-fact dd > strong { display: grid; flex: 0 0 auto; place-items: center; width: 2rem; height: 2rem; border: 2px solid currentColor; border-radius: 50%; color: var(--red); font-size: 1rem; }
+.protect-weekend .breach-fact dd > strong { color: var(--teal); }
+.breach-fact dd span { color: var(--muted); font-size: .68rem; font-weight: 780; }
+.risk-recorded { margin-top: .9rem; }
+.risk-event-log { box-shadow: none; border: 1px solid var(--line); }
+.risk-why { margin-top: 1rem; }
+
+.risk-outcome-panel, .distribution-panel { padding: clamp(1.1rem, 3vw, 2.2rem); }
+.risk-outcome-panel { border-top-color: var(--amber); }
+.one-world-comparison { margin: 1rem 0; padding: 1rem; border-radius: .5rem; background: var(--surface-quiet); }
+.one-world-comparison p { margin: .2rem 0; font-size: 1rem; line-height: 1.5; }
+.observed-difference { color: var(--red); }
+.not-verdict { display: grid; gap: .2rem; margin: 1rem 0; padding: 1rem; border-left: 7px solid var(--amber); background: var(--amber-soft); }
+.not-verdict strong { font-size: 1.08rem; }
+.world-evidence { color: var(--muted); font-size: .76rem; }
+
+.distribution-panel { border-top-color: var(--navy); }
+.outcome-strips { display: grid; gap: .85rem; margin: 1.25rem 0; }
+.outcome-strip-row { min-width: 0; padding: .85rem; border: 1px solid var(--line); border-radius: .6rem; background: var(--surface); }
+.outcome-strip-row header { display: flex; align-items: baseline; justify-content: space-between; gap: .7rem; margin-bottom: .5rem; }
+.outcome-strip-row h2 { margin: 0; font-size: 1rem; }
+.outcome-strip-row header span { color: var(--muted); font-size: .68rem; font-weight: 800; text-align: right; }
+.outcome-strip { display: grid; grid-template-columns: minmax(0, 85fr) minmax(0, 15fr); min-width: 0; min-height: 92px; overflow: hidden; border: 2px solid var(--ink); border-radius: .42rem; }
+.outcome-segment { display: grid; align-content: center; min-width: 0; padding: .55rem; }
+.outcome-segment strong, .outcome-segment span { display: block; min-width: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.outcome-segment strong { font-size: .72rem; line-height: 1.2; }
+.outcome-segment span { margin-top: .12rem; font-size: 1rem; font-weight: 900; }
+.outcome-segment.routine { position: relative; color: var(--navy-deep); background: var(--teal-soft); }
+.outcome-segment.routine i { position: absolute; right: .45rem; bottom: .4rem; max-width: 20ch; padding: .18rem .35rem; border: 1px solid var(--navy); border-radius: 999px; background: white; font-size: .57rem; font-style: normal; font-weight: 850; text-align: center; }
+.outcome-segment.disruption { border-left: 2px solid var(--ink); color: var(--ink); background-color: var(--amber-soft); background-image: repeating-linear-gradient(135deg, transparent 0 8px, rgba(150,97,15,.18) 8px 11px); }
+.outcome-segment.disruption strong { font-size: .62rem; }
+.outcome-segment.disruption span { font-size: .82rem; }
+.strip-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .4rem; margin: .55rem 0 0; }
+.strip-summary > div { min-width: 0; padding: .42rem; border-radius: .32rem; background: var(--surface-quiet); }
+.strip-summary dt { color: var(--muted); font-size: .57rem; font-weight: 900; text-transform: uppercase; }
+.strip-summary dd { margin: .08rem 0 0; font-size: .72rem; font-weight: 850; }
+.strip-breaches { box-shadow: inset 4px 0 0 var(--red); }
+.protect-weekend .strip-breaches { box-shadow: inset 4px 0 0 var(--teal); }
+.loss-ruler { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .55rem; min-height: 56px; padding-top: 1.25rem; font-size: .65rem; font-weight: 850; }
+.ruler-line { height: 2px; background: var(--ink); }
+.loss-ruler strong { position: absolute; left: 46%; top: 0; padding: .18rem .35rem; border: 1px solid var(--red); border-radius: .25rem; color: var(--red); background: white; transform: translateX(-50%); }
+.loss-ruler strong::after { position: absolute; top: 100%; left: 50%; width: 2px; height: 32px; content: ""; background: var(--red); }
+.distribution-callout { display: grid; gap: .22rem; margin: 1rem 0; padding: 1rem; border-left: 7px solid var(--red); background: var(--red-soft); }
+.distribution-callout strong { font-size: 1.18rem; }
+
+.risk-debrief-panel { max-width: 1080px; }
+.debrief-position { font-size: 1rem; font-weight: 780; }
+.comparison-ledger { margin-top: 1rem; overflow: hidden; border: 1px solid var(--line); border-radius: .55rem; }
+.comparison-ledger h2 { margin: 0; padding: .7rem .8rem; color: white; background: var(--navy); font-size: .9rem; }
+.comparison-row { display: grid; grid-template-columns: minmax(170px, .8fr) repeat(2, minmax(0, 1fr)); }
+.comparison-row > * { min-width: 0; padding: .65rem .75rem; border-top: 1px solid var(--line); font-size: .76rem; }
+.comparison-row > span { color: var(--muted); background: var(--surface-quiet); font-weight: 800; }
+.comparison-head > * { border-top: 0; color: var(--ink); background: var(--teal-soft); font-size: .67rem; text-transform: uppercase; }
+.risk-verdict { margin: 1rem 0; padding: 1rem; border: 0; border-left: 7px solid var(--teal); background: var(--teal-soft); font-family: Georgia, "Times New Roman", serif; font-size: 1.08rem; font-weight: 700; line-height: 1.48; }
+
 @keyframes phase-enter {
   from { opacity: .01; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -318,7 +414,7 @@ p, h1, h2, h3, li, dt, dd, button, summary, code { overflow-wrap: anywhere; }
   .shift-controls { justify-content: space-between; }
   .clock { min-width: 0; margin-right: auto; text-align: left; }
   .briefing-scrim { inset: 116px 0 0; }
-  .signals, .choice-grid, .decision-actions, .trace-facts { grid-template-columns: 1fr; }
+  .signals, .choice-grid, .decision-actions, .trace-facts, .case-cards, .risk-plan-grid { grid-template-columns: 1fr; }
   .factor-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .score-heading { align-items: start; flex-direction: column; }
   .score-heading > span { text-align: left; }
@@ -334,6 +430,19 @@ p, h1, h2, h3, li, dt, dd, button, summary, code { overflow-wrap: anywhere; }
   .event-heading, .ledger-heading, .debrief-actions { align-items: stretch; flex-direction: column; }
   .ledger-row { grid-template-columns: 1fr; }
   .separate-measures { grid-template-columns: 1fr; }
+  .risk-shell { padding: .75rem; }
+  .risk-decision-content, .risk-outcome-panel, .distribution-panel { padding: .82rem; }
+  .outcome-strip-row header { align-items: flex-start; flex-direction: column; }
+  .outcome-strip-row header span { text-align: left; }
+  .outcome-strip { grid-template-columns: 1fr; }
+  .outcome-segment { min-height: 84px; }
+  .outcome-segment.disruption { border-top: 2px solid var(--ink); border-left: 0; }
+  .strip-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .comparison-row { grid-template-columns: 1fr; }
+  .comparison-row > * { border-top: 1px solid var(--line); }
+  .comparison-head { display: none; }
+  .comparison-row > strong::before { display: block; margin-bottom: .12rem; color: var(--muted); font-size: .58rem; text-transform: uppercase; content: "Plan result"; }
+  .loss-ruler strong { left: 48%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

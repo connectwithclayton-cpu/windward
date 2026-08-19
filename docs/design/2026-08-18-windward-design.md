@@ -30,8 +30,8 @@ represents any real vendor’s model.
 - A complete first session lasts two to three minutes.
 - The scenario is hand-authored rather than procedural.
 - The experience does not auto-play. It begins only after the player starts it.
-- One deterministic scenario supports operations, AI/product, engineering, and
-  generalist readers through progressive disclosure.
+- Each authored case uses one deterministic scenario to support operations,
+  AI/product, engineering, and generalist readers through progressive disclosure.
 - Every scored mistake has one cause: the dispatcher makes a locally reasonable
   choice that is globally bad because it does not look ahead.
 - The ending is a causal debrief, not a score.

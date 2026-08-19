@@ -10,16 +10,20 @@ it is about to get something wrong.
 Built around a question worth asking: when a system dispatches on its own, what is
 the human actually for?
 
-**Status:** the pure dispatch and replay engine and the complete authored
-supervision scenario are implemented. The console covers orientation, the
-guided route cascade, the live coverage tradeoff, the no-cool emergency, and a
-causal branch-ledger debrief.
+**Status:** two complete authored supervision cases are implemented. **Horizon**
+covers the guided route cascade, live coverage tradeoff, no-cool emergency, and
+causal branch-ledger debrief. **Risk appetite** compares a higher-average plan
+with a bounded-downside override, resolves one fixed world, then judges both
+plans across an exact weighted set of 100 matched worlds.
 
 ## Supervision console
 
 [Play Windward in your browser][live-console].
 
+[Open Case 2 · Risk appetite directly][risk-console].
+
 [live-console]: https://connectwithclayton-cpu.github.io/windward/
+[risk-console]: https://connectwithclayton-cpu.github.io/windward/#risk-appetite
 
 The dependency-free static client in `index.html` imports the compiled engine and
 console layer from `dist/`. It presents the fixed five-technician board, the two
@@ -27,6 +31,11 @@ persistent operational signals, the shared Keep/Override decision grammar, the
 engine-backed Why drawer, both authored outcome branches, a causal comparison
 with the untouched AI-only baseline, and a separate reproducible engineering
 trace.
+
+Risk appetite is a separate static case, not another event in the Horizon
+shift. Its `15 of 100` likelihood, `$15,000` one-job loss limit, plans, outcomes,
+and money are authored fictional assumptions. They are not measured HVAC
+failure rates, real prices, actuarial evidence, or advice.
 
 After `npm run build`, serve the repository root with any static file server and
 open `index.html`. For example:
@@ -50,7 +59,12 @@ The dependency-free TypeScript package exposes:
   calculation that never feeds back into ranking;
 - seeded scenario and replay functions that run player and empty-override
   baseline branches from independent board states and identical exogenous
-  events.
+  events;
+- `rankPlans(input)`, a separate expected-value-only plan evaluator that does
+  not accept or apply a loss limit;
+- an exact, versioned 100-world risk replay that pairs player and AI-only plans
+  against identical outside conditions and computes policy evidence outside
+  ranking.
 
 Jobs carry an explicit promised time window for replay and late-outcome
 evidence. That window is not a ranking factor. The ranker uses only travel time,
