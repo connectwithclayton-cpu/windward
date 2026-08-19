@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - fm/wwd-deploy-pages
 
 permissions:
   contents: read
