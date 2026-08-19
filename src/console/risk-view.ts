@@ -153,7 +153,7 @@ function renderNarratedWorld(state: RiskConsoleState): string {
   return `<main id="main-content" class="risk-shell phase-enter phase-risk-world">
     ${renderRiskSignals()}
     <section class="risk-outcome-panel" aria-labelledby="risk-world-title">
-      <div class="event-heading"><div><p class="eyebrow">Observed Saturday · ${escapeHtml(formatRiskWorldLabel(player.worldId))}</p><h1 id="risk-world-title" tabindex="-1">Cooling restored Friday.</h1></div><span class="time-stamp">One world</span></div>
+      <div class="event-heading"><div><p class="eyebrow">Observed Saturday · ${escapeHtml(formatRiskWorldLabel(player.worldId))}</p><h1 id="risk-world-title" tabindex="-1">${escapeHtml(player.coolingStatus)}</h1></div><span class="time-stamp">One world</span></div>
       <div class="one-world-comparison">
         ${protectedChoice
           ? `<p>Your protected plan returned <strong>${formatRiskMoney(player.netValueCents)}</strong>. The AI-only direct plan returned <strong>${formatRiskMoney(baseline.netValueCents)}</strong> in this same world.</p><p class="observed-difference"><strong>Observed difference today: ${formatRiskDifference(comparison.narrative.differenceCents)}.</strong></p>`
@@ -190,7 +190,7 @@ function renderDistribution(state: RiskConsoleState): string {
           <span class="ruler-min">${formatCompactRiskMoney(minimumValue)}</span><span class="ruler-line" aria-hidden="true"></span><strong>Loss limit · ${formatCompactRiskMoney(-direct.lossLimitCents)}</strong><span class="ruler-max">${formatCompactRiskMoney(maximumValue)}</span>
         </div>
       </div>
-      <div class="distribution-callout"><strong>${direct.lossLimitBreachCount} vs ${protectedPlan.lossLimitBreachCount} limit breaches</strong><span>Direct repair crosses the stated boundary in ${direct.lossLimitBreachCount} worlds. Weekend protection keeps all ${protectedPlan.worlds.length} inside it.</span></div>
+      <div class="distribution-callout"><strong>${direct.lossLimitBreachCount} vs ${protectedPlan.lossLimitBreachCount} limit breaches</strong><span>${describeLossLimitCoverage(direct, "Direct repair")} ${describeLossLimitCoverage(protectedPlan, "Weekend protection")}</span></div>
       <button class="primary-button wide" type="button" data-action="open-risk-debrief">Open policy debrief</button>
     </section>
     ${renderRiskProvenance()}
@@ -231,10 +231,10 @@ function renderRiskDebrief(state: RiskConsoleState): string {
   const playerWorst = formatRiskMoney(comparison.player.worstNetValueCents);
   const narrativeDifference = formatUnsignedRiskMoney(Math.abs(comparison.narrative.differenceCents));
   const summary = protectedChoice
-    ? `At 3:25 PM you gave up ${formatUnsignedRiskMoney(averageTrade)} of average value to reduce the worst result by ${formatUnsignedRiskMoney(worstImprovement)}. That decision kept every replayed world inside the business's ${lossLimit} one-job loss limit. It was sound under the stated policy even though it cost ${narrativeDifference} in the Saturday you saw.`
+    ? `At 3:25 PM you gave up ${formatUnsignedRiskMoney(averageTrade)} of average value to reduce the worst result by ${formatUnsignedRiskMoney(worstImprovement)}. ${describeProtectedPolicy(comparison.player, lossLimit)} It cost ${narrativeDifference} in the Saturday you saw.`
     : `At 3:25 PM you kept direct repair. The optimiser did its job: ${playerAverage} is the higher average. The business's loss limit was not applied, leaving ${comparison.player.lossLimitBreachCount} of ${worldCount} worlds at ${playerWorst}. This Saturday happened to work. The lucky result did not make the exposure compliant with the stated policy.`;
   const verdict = protectedChoice
-    ? `This Saturday cost ${narrativeDifference} more than the AI-only plan. Your decision was still sound under the stated ${lossLimit} loss limit: it kept all ${worldCount} replayed worlds inside the limit. One outcome does not grade a risk decision.`
+    ? `This Saturday cost ${narrativeDifference} more than the AI-only plan. ${describeProtectedPolicy(comparison.player, lossLimit)} One outcome does not grade a risk decision.`
     : `The optimiser chose the higher average correctly. The plan still crossed the business's stated loss limit in ${comparison.player.lossLimitBreachCount} worlds. One lucky outcome does not grade a risk decision.`;
   return `<main id="main-content" class="risk-shell phase-enter phase-risk-debrief">
     <section class="debrief-panel risk-debrief-panel" aria-labelledby="risk-debrief-title">
@@ -358,6 +358,18 @@ function formatCompactRiskMoney(cents: number): string {
 
 function formatRiskWorldLabel(worldId: string): string {
   return worldId.replace(/^world-/, "world ");
+}
+
+function describeLossLimitCoverage(cohort: RiskCohortResult, subject: string): string {
+  return cohort.lossLimitBreachCount === 0
+    ? `${subject} keeps all ${cohort.worlds.length} replayed worlds inside the stated boundary.`
+    : `${subject} crosses the stated boundary in ${cohort.lossLimitBreachCount} worlds.`;
+}
+
+function describeProtectedPolicy(cohort: RiskCohortResult, lossLimit: string): string {
+  return cohort.lossLimitBreachCount === 0
+    ? `Your decision was still sound under the stated ${lossLimit} loss limit: ${describeLossLimitCoverage(cohort, "it")}`
+    : `Your decision reduced downside but still exceeded the stated ${lossLimit} loss limit: ${describeLossLimitCoverage(cohort, "it")}`;
 }
 
 function countWorlds(cohort: RiskCohortResult, condition: RiskWorldCondition): number {

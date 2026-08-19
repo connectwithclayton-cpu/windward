@@ -50,6 +50,7 @@ test("protected choice resolves one favourable world before the matched distribu
   const world = continueToNarratedWorld(recorded);
   const worldHtml = renderRiskConsole(world);
   assert.match(worldHtml, /Observed Saturday · world 042/);
+  assert.match(worldHtml, /<h1 id="risk-world-title" tabindex="-1">Cooling restored Friday<\/h1>/);
   assert.match(worldHtml, /Observed difference today: −\$9,000/);
   assert.match(worldHtml, /One Saturday is not the verdict/);
   assert.match(worldHtml, /Restart will not reroll it/);
@@ -58,6 +59,7 @@ test("protected choice resolves one favourable world before the matched distribu
   const distributionHtml = renderRiskConsole(distribution);
   assert.match(distributionHtml, /Under this authored 15-in-100 assumption/);
   assert.match(distributionHtml, /15 vs 0 limit breaches/);
+  assert.match(distributionHtml, /Weekend protection keeps all 100 replayed worlds inside the stated boundary\./);
   assert.match(distributionHtml, /Worst<\/dt><dd>−\$40,000/);
   assert.match(distributionHtml, /Worst<\/dt><dd>−\$8,000/);
   assert.match(distributionHtml, /Loss limit · −\$15k/);
@@ -73,6 +75,7 @@ test("both choice branches reach policy debriefs that separate luck from quality
   assert.match(protectedHtml, /gave up \$2,850 of average value/);
   assert.match(protectedHtml, /This Saturday cost \$9,000 more than the AI-only plan/);
   assert.match(protectedHtml, /Your decision was still sound/);
+  assert.match(protectedHtml, /it keeps all 100 replayed worlds inside the stated boundary/);
   assert.match(protectedHtml, /One outcome does not grade a risk decision/);
 
   const directDebrief = openRiskDebrief(reachDistribution("direct-repair"));
