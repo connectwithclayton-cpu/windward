@@ -337,7 +337,9 @@ not explain the scenario aloud. Record these five measures:
 The pass thresholds established by the critique are:
 
 - at least 4 of 5 participants pass each of the three pre-emergency measures;
-- 5 of 5 losing participants can identify the causal decision.
+- 5 of 5 losing participants can identify the causal decision;
+- at least 4 of 5 participants can explain the engine’s “good now, bad later”
+  flaw after the debrief.
 
 The reserve finale has a hard kill criterion: if fewer than 4 of 5 participants
 can articulate why zero afternoon coverage is risky **before** the emergency,
@@ -401,8 +403,4 @@ The public presentation must also preserve these facts:
 
 ## Open questions
 
-The critique defines five validation measures but assigns numeric thresholds
-only to the three pre-emergency measures and loss causality. It does not assign
-a numeric threshold to the fifth measure—explaining the engine’s “good now, bad
-later” flaw after the debrief. That threshold remains to be settled before the
-storyboard study is scored.
+There are no open questions.
