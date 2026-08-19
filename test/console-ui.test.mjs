@@ -73,14 +73,28 @@ test("console meter and route map follow live state at the render boundary", () 
   app.click("override");
 
   assert.match(app.innerHTML, /Override recorded/);
-  assert.doesNotMatch(app.innerHTML, /class="route-map"/);
+  assert.match(app.innerHTML, /class="route-map"/);
+  assert.match(app.innerHTML, /Route updated: Luis Alvarez/);
   assert.match(app.innerHTML, /aria-valuenow="1"/);
 
   app.click("continue");
+  assert.doesNotMatch(app.innerHTML, /class="route-map"/);
   app.click("open-coverage");
   app.click("accept-coverage");
+  app.click("continue-emergency");
 
   assert.match(app.innerHTML, /aria-valuenow="0"/);
   assert.match(app.innerHTML, /Emergency coverage after 2 PM: 0 tech/);
   assert.match(app.innerHTML, /class="coverage-fill" style="width: 0%;"/);
+  assert.match(app.innerHTML, /Safety impact: residents remain without cooling until tomorrow/);
+
+  app.click("restart");
+  app.click("start");
+  app.click("keep");
+  assert.match(app.innerHTML, /Route kept: Maya Ortiz/);
+  app.click("continue");
+  app.click("open-coverage");
+  app.click("hold-coverage");
+  app.click("continue-emergency");
+  assert.match(app.innerHTML, /Safety impact: same-day service reduces/);
 });
