@@ -247,7 +247,7 @@ export function runRiskCohort(
     definition.worlds.map((world) => replayRiskWorld(definition, world.id, planId)),
   );
   const weightedValue = worlds.reduce(
-    (total, world) => total + world.netValueCents * world.weightBasisPoints,
+    (total, world) => addWeightedCents(total, world.netValueCents, world.weightBasisPoints),
     0,
   );
   if (weightedValue % BASIS_POINT_TOTAL !== 0) {
@@ -419,7 +419,7 @@ export function validateRiskBranchComparison(comparison: RiskBranchComparison): 
 
 function evaluatePlan(plan: RiskPlanInput): Omit<RankedRiskPlan, "rank"> {
   const numerator = plan.outcomes.reduce(
-    (total, outcome) => total + outcome.netValueCents * outcome.weightBasisPoints,
+    (total, outcome) => addWeightedCents(total, outcome.netValueCents, outcome.weightBasisPoints),
     0,
   );
   if (numerator % BASIS_POINT_TOTAL !== 0) {
@@ -456,14 +456,14 @@ function validateDecisionInput(input: PlanDecisionInput): void {
         throw new Error(`Plan ${plan.id} repeats condition ${outcome.condition}`);
       }
       conditions.add(outcome.condition);
-      if (!Number.isInteger(outcome.netValueCents)) {
-        throw new Error(`Plan ${plan.id} contains non-integer cents`);
+      if (!Number.isSafeInteger(outcome.netValueCents)) {
+        throw new Error(`Plan ${plan.id} contains non-safe integer cents`);
       }
-      if (!Number.isInteger(outcome.weightBasisPoints) || outcome.weightBasisPoints <= 0) {
+      if (!Number.isSafeInteger(outcome.weightBasisPoints) || outcome.weightBasisPoints <= 0) {
         throw new Error(`Plan ${plan.id} contains an invalid outcome weight`);
       }
       if (
-        !Number.isInteger(outcome.worldCount) ||
+        !Number.isSafeInteger(outcome.worldCount) ||
         outcome.worldCount <= 0 ||
         outcome.worldCount * ONE_WORLD_WEIGHT !== outcome.weightBasisPoints
       ) {
@@ -475,6 +475,18 @@ function validateDecisionInput(input: PlanDecisionInput): void {
       throw new Error(`Plan ${plan.id} weights must sum to ${BASIS_POINT_TOTAL} basis points`);
     }
   }
+}
+
+function addWeightedCents(total: number, cents: number, weightBasisPoints: number): number {
+  const weightedValue = cents * weightBasisPoints;
+  if (!Number.isSafeInteger(weightedValue)) {
+    throw new Error("Weighted risk arithmetic exceeds safe integer cents");
+  }
+  const nextTotal = total + weightedValue;
+  if (!Number.isSafeInteger(nextTotal)) {
+    throw new Error("Weighted risk arithmetic exceeds safe integer cents");
+  }
+  return nextTotal;
 }
 
 function isRiskPlanId(value: unknown): value is RiskPlanId {

@@ -351,7 +351,7 @@ p, h1, h2, h3, li, dt, dd, button, summary, code { overflow-wrap: anywhere; }
 .outcome-strip-row header { display: flex; align-items: baseline; justify-content: space-between; gap: .7rem; margin-bottom: .5rem; }
 .outcome-strip-row h2 { margin: 0; font-size: 1rem; }
 .outcome-strip-row header span { color: var(--muted); font-size: .68rem; font-weight: 800; text-align: right; }
-.outcome-strip { display: grid; grid-template-columns: minmax(0, 85fr) minmax(0, 15fr); min-width: 0; min-height: 92px; overflow: hidden; border: 2px solid var(--ink); border-radius: .42rem; }
+.outcome-strip { display: grid; grid-template-columns: minmax(0, var(--risk-routine-weight)) minmax(0, var(--risk-disruption-weight)); min-width: 0; min-height: 92px; overflow: hidden; border: 2px solid var(--ink); border-radius: .42rem; }
 .outcome-segment { display: grid; align-content: center; min-width: 0; padding: .55rem; }
 .outcome-segment strong, .outcome-segment span { display: block; min-width: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .outcome-segment strong { font-size: .72rem; line-height: 1.2; }
@@ -369,7 +369,7 @@ p, h1, h2, h3, li, dt, dd, button, summary, code { overflow-wrap: anywhere; }
 .protect-weekend .strip-breaches { box-shadow: inset 4px 0 0 var(--teal); }
 .loss-ruler { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .55rem; min-height: 56px; padding-top: 1.25rem; font-size: .65rem; font-weight: 850; }
 .ruler-line { height: 2px; background: var(--ink); }
-.loss-ruler strong { position: absolute; left: 46%; top: 0; padding: .18rem .35rem; border: 1px solid var(--red); border-radius: .25rem; color: var(--red); background: white; transform: translateX(-50%); }
+.loss-ruler strong { position: absolute; left: var(--risk-loss-limit-position); top: 0; padding: .18rem .35rem; border: 1px solid var(--red); border-radius: .25rem; color: var(--red); background: white; transform: translateX(-50%); }
 .loss-ruler strong::after { position: absolute; top: 100%; left: 50%; width: 2px; height: 32px; content: ""; background: var(--red); }
 .distribution-callout { display: grid; gap: .22rem; margin: 1rem 0; padding: 1rem; border-left: 7px solid var(--red); background: var(--red-soft); }
 .distribution-callout strong { font-size: 1.18rem; }
@@ -444,7 +444,7 @@ p, h1, h2, h3, li, dt, dd, button, summary, code { overflow-wrap: anywhere; }
   .comparison-row > * { border-top: 1px solid var(--line); }
   .comparison-head { display: none; }
   .comparison-row > strong::before { display: block; margin-bottom: .12rem; color: var(--muted); font-size: .58rem; text-transform: uppercase; content: "Plan result"; }
-  .loss-ruler strong { left: 48%; }
+  .loss-ruler strong { left: var(--risk-loss-limit-position); }
 }
 
 @media (prefers-reduced-motion: reduce) {

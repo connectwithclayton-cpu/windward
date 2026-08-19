@@ -174,8 +174,10 @@ function renderDistribution(state: RiskConsoleState): string {
   const totalWorlds = comparison.player.worlds.length;
   const routineWorlds = countWorlds(direct, "ROUTINE_PART_AVAILABLE");
   const disruptionWorlds = countWorlds(direct, "PART_UNAVAILABLE_UNTIL_MONDAY");
-  const minimumValue = Math.min(direct.worstNetValueCents, protectedPlan.worstNetValueCents);
-  const maximumValue = Math.max(...direct.worlds.map((world) => world.netValueCents), ...protectedPlan.worlds.map((world) => world.netValueCents));
+  const allValues = [...direct.worlds, ...protectedPlan.worlds].map((world) => world.netValueCents);
+  const minimumValue = Math.min(...allValues);
+  const maximumValue = Math.max(...allValues);
+  const lossLimitPosition = valuePosition(minimumValue, maximumValue, -direct.lossLimitCents);
   return `<main id="main-content" class="risk-shell phase-enter phase-risk-distribution">
     ${renderRiskSignals()}
     <section class="distribution-panel" aria-labelledby="distribution-title">
@@ -184,7 +186,7 @@ function renderDistribution(state: RiskConsoleState): string {
       <div class="outcome-strips" aria-label="Matched ${totalWorlds}-world outcomes for both plans">
         ${renderOutcomeStrip(direct)}
         ${renderOutcomeStrip(protectedPlan)}
-        <div class="loss-ruler" aria-label="One-job loss limit at ${formatRiskMoney(direct.lossLimitCents * -1)}">
+        <div class="loss-ruler" style="--risk-loss-limit-position: ${lossLimitPosition}%;" aria-label="One-job loss limit at ${formatRiskMoney(direct.lossLimitCents * -1)}">
           <span class="ruler-min">${formatCompactRiskMoney(minimumValue)}</span><span class="ruler-line" aria-hidden="true"></span><strong>Loss limit · ${formatCompactRiskMoney(-direct.lossLimitCents)}</strong><span class="ruler-max">${formatCompactRiskMoney(maximumValue)}</span>
         </div>
       </div>
@@ -199,10 +201,12 @@ function renderOutcomeStrip(cohort: RiskCohortResult): string {
   const plan = requireRankedPlan(cohort.planId);
   const routine = requireOutcome(plan, "ROUTINE_PART_AVAILABLE");
   const disruption = requireOutcome(plan, "PART_UNAVAILABLE_UNTIL_MONDAY");
+  const routineWeight = weightForCondition(cohort, "ROUTINE_PART_AVAILABLE");
+  const disruptionWeight = weightForCondition(cohort, "PART_UNAVAILABLE_UNTIL_MONDAY");
   return `<article class="outcome-strip-row ${cohort.planId}">
     <header><h2>${escapeHtml(cohort.planName)}</h2><span>${cohort.planId === "direct-repair" ? "AI plan · higher average" : "Protected plan · bounded downside"}</span></header>
     <p class="sr-only">${routine.worldCount} of ${cohort.worlds.length} routine worlds: ${escapeHtml(routine.coolingStatus)}, ${formatRiskMoney(routine.netValueCents)}. ${disruption.worldCount} of ${cohort.worlds.length} part-delay worlds: ${escapeHtml(disruption.coolingStatus)}, ${formatRiskMoney(disruption.netValueCents)}.</p>
-    <div class="outcome-strip" aria-hidden="true">
+    <div class="outcome-strip" style="--risk-routine-weight: ${routineWeight}; --risk-disruption-weight: ${disruptionWeight};" aria-hidden="true">
       <div class="outcome-segment routine"><strong>${routine.worldCount} routine</strong><span>${formatRiskMoney(routine.netValueCents)}</span><i>Observed Saturday · ${escapeHtml(RISK_APPETITE_CASE.narrativeWorldId)}</i></div>
       <div class="outcome-segment disruption"><strong>${disruption.worldCount} part delays</strong><span>${formatRiskMoney(disruption.netValueCents)}</span></div>
     </div>
@@ -358,6 +362,18 @@ function formatRiskWorldLabel(worldId: string): string {
 
 function countWorlds(cohort: RiskCohortResult, condition: RiskWorldCondition): number {
   return cohort.worlds.filter((world) => world.condition === condition).length;
+}
+
+function weightForCondition(cohort: RiskCohortResult, condition: RiskWorldCondition): number {
+  return cohort.worlds
+    .filter((world) => world.condition === condition)
+    .reduce((total, world) => total + world.weightBasisPoints, 0);
+}
+
+function valuePosition(minimum: number, maximum: number, value: number): number {
+  if (maximum <= minimum) return 50;
+  const position = ((value - minimum) / (maximum - minimum)) * 100;
+  return Math.round(Math.min(100, Math.max(0, position)) * 100) / 100;
 }
 
 function escapeHtml(value: unknown): string {

@@ -123,6 +123,29 @@ test("malformed case weights, duplicate IDs, unknown plans, and branch drift fai
     /one percent weight/,
   );
 
+  const unsafeValueCase = {
+    ...RISK_APPETITE_CASE,
+    decisionInput: {
+      ...RISK_APPETITE_CASE.decisionInput,
+      plans: RISK_APPETITE_CASE.decisionInput.plans.map((plan, index) =>
+        index === 0
+          ? {
+              ...plan,
+              outcomes: plan.outcomes.map((outcome, outcomeIndex) =>
+                outcomeIndex === 0
+                  ? { ...outcome, netValueCents: Number.MAX_SAFE_INTEGER + 1 }
+                  : outcome,
+              ),
+            }
+          : plan,
+      ),
+    },
+  };
+  assert.throws(
+    () => validateRiskCaseDefinition(unsafeValueCase),
+    /non-safe integer cents/,
+  );
+
   const unknownWorldCase = {
     ...RISK_APPETITE_CASE,
     worlds: RISK_APPETITE_CASE.worlds.map((world, index) =>

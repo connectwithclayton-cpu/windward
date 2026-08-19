@@ -61,6 +61,8 @@ test("protected choice resolves one favourable world before the matched distribu
   assert.match(distributionHtml, /Worst<\/dt><dd>−\$40,000/);
   assert.match(distributionHtml, /Worst<\/dt><dd>−\$8,000/);
   assert.match(distributionHtml, /Loss limit · −\$15k/);
+  assert.match(distributionHtml, /--risk-routine-weight: 8500; --risk-disruption-weight: 1500/);
+  assert.match(distributionHtml, /--risk-loss-limit-position: 46\.3%/);
 });
 
 test("both choice branches reach policy debriefs that separate luck from quality", () => {
