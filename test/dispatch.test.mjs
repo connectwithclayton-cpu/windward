@@ -240,6 +240,33 @@ test("promised windows are replayable job data but never a ranking factor", () =
   });
 });
 
+test("non-ASCII technician IDs use deterministic code-unit tie-breaking", () => {
+  const state = {
+    technicians: [
+      technician({ id: "é" }),
+      technician({ id: "z" }),
+    ],
+  };
+  const work = job({
+    travelMinutesByTechnician: { é: 0, z: 0 },
+    routeDeltaMinutesByTechnician: { é: 0, z: 0 },
+    expectedRevenueCentsByTechnician: { é: 20_000, z: 20_000 },
+  });
+
+  const decision = dispatch(state, work);
+  const reversedDecision = dispatch(
+    { technicians: [...state.technicians].reverse() },
+    work,
+  );
+
+  assert.deepEqual(
+    decision.ranking.map(({ technicianId }) => technicianId),
+    ["z", "é"],
+  );
+  assert.equal(decision.winner.technicianId, "z");
+  assert.equal(decision.decisionId, reversedDecision.decisionId);
+});
+
 test("coverage is descriptive evidence computed separately from dispatch", () => {
   const state = board({ availableAtMinute: 900 });
   const coverage = computeCoverage(state, {

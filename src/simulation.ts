@@ -1,5 +1,11 @@
 import { dispatch } from "./dispatch.js";
-import { assertFiniteNumber, clone, deepFreeze, stableFingerprint } from "./internal.js";
+import {
+  assertFiniteNumber,
+  clone,
+  compareCodeUnits,
+  deepFreeze,
+  stableFingerprint,
+} from "./internal.js";
 import type {
   BoardState,
   CandidateEvidence,
@@ -93,7 +99,7 @@ export function generateExogenousEvents(
     const promisedWindowEndMinute =
       promisedWindowStartMinute +
       randomInteger(random, blueprint.promisedWindowDurationMinutes);
-    const technicianIds = Object.keys(blueprint.travelMinutesByTechnician).sort();
+    const technicianIds = Object.keys(blueprint.travelMinutesByTechnician).sort(compareCodeUnits);
     const travelMinutesByTechnician = Object.fromEntries(
       technicianIds.map((technicianId) => [
         technicianId,
@@ -136,7 +142,7 @@ export function generateExogenousEvents(
   events.sort(
     (left, right) =>
       left.job.arrivalMinute - right.job.arrivalMinute ||
-      left.eventId.localeCompare(right.eventId),
+      compareCodeUnits(left.eventId, right.eventId),
   );
 
   return deepFreeze(

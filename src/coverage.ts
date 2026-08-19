@@ -1,5 +1,10 @@
 import type { BoardState, CertificationCode, SkillCode, TechnicianId } from "./types.js";
-import { assertFiniteNumber, deepFreeze, normalizeCodes } from "./internal.js";
+import {
+  assertFiniteNumber,
+  compareCodeUnits,
+  deepFreeze,
+  normalizeCodes,
+} from "./internal.js";
 
 export interface CoverageRequirement {
   readonly atMinute: number;
@@ -45,7 +50,7 @@ export function computeCoverage(
         missingCertifications,
       };
     })
-    .sort((left, right) => left.technicianId.localeCompare(right.technicianId));
+    .sort((left, right) => compareCodeUnits(left.technicianId, right.technicianId));
 
   return deepFreeze({
     atMinute: requirement.atMinute,

@@ -6,10 +6,14 @@ export function roundScore(value: number): number {
   return Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
 }
 
+export function compareCodeUnits(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 export function normalizeCodes(values: readonly string[]): readonly string[] {
   return [...new Set(values.map((value) => value.trim().toLowerCase()))]
     .filter((value) => value.length > 0)
-    .sort();
+    .sort(compareCodeUnits);
 }
 
 export function deepFreeze<T>(value: T): T {
@@ -63,7 +67,7 @@ function sortObject(value: unknown): unknown {
   if (value !== null && typeof value === "object") {
     return Object.fromEntries(
       Object.entries(value)
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => compareCodeUnits(left, right))
         .map(([key, child]) => [key, sortObject(child)]),
     );
   }

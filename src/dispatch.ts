@@ -14,6 +14,7 @@ import {
   assertFiniteNumber,
   clamp01,
   clone,
+  compareCodeUnits,
   deepFreeze,
   normalizeCodes,
   roundScore,
@@ -50,7 +51,7 @@ export function dispatch(boardState: BoardState, job: Job): Decision {
       (candidate): candidate is DisqualifiedCandidateEvidence =>
         !candidate.eligibility.eligible,
     )
-    .sort((left, right) => left.technicianId.localeCompare(right.technicianId));
+    .sort((left, right) => compareCodeUnits(left.technicianId, right.technicianId));
 
   if (eligible.length === 0) {
     throw new NoEligibleCandidateError(deepFreeze(rankDisqualified(disqualified)));
@@ -87,7 +88,7 @@ function normalizeInput(boardState: BoardState, job: Job) {
   const seenIds = new Set<string>();
   const technicians = boardState.technicians
     .map((technician) => normalizeTechnician(technician, seenIds))
-    .sort((left, right) => left.id.localeCompare(right.id));
+    .sort((left, right) => compareCodeUnits(left.id, right.id));
 
   if (technicians.length === 0) {
     throw new RangeError("boardState must contain at least one technician");
@@ -329,7 +330,7 @@ function compareEligible(
   return (
     right.score - left.score ||
     left.factors.travelTime.value.minutes - right.factors.travelTime.value.minutes ||
-    left.technicianId.localeCompare(right.technicianId)
+    compareCodeUnits(left.technicianId, right.technicianId)
   );
 }
 
