@@ -128,7 +128,11 @@ export function formatClockMinute(minute: number): string {
 
 export function formatMoney(cents: number): string {
   const sign = cents < 0 ? "−" : "";
-  return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
+  const absoluteCents = Math.abs(cents);
+  const amount = absoluteCents % 100 === 0
+    ? String(absoluteCents / 100)
+    : (absoluteCents / 100).toFixed(2);
+  return `${sign}$${amount}`;
 }
 
 function toChoice(

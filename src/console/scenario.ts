@@ -60,7 +60,7 @@ export const ROSTER: readonly RosterProfile[] = Object.freeze([
 
 const fixed = (value: number) => ({ min: value, max: value });
 
-export const EVENT_ONE_SCENARIO: ScenarioDefinition = Object.freeze({
+export const EVENT_ONE_SCENARIO = Object.freeze({
   seed: EVENT_ONE_SEED,
   initialBoard: {
     technicians: [
@@ -222,7 +222,7 @@ export const EVENT_ONE_SCENARIO: ScenarioDefinition = Object.freeze({
       },
     },
   ],
-});
+} satisfies ScenarioDefinition);
 
 export const EMERGENCY_COVERAGE_REQUIREMENT: CoverageRequirement = Object.freeze({
   atMinute: 840,
