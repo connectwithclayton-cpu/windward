@@ -160,3 +160,26 @@ test("an override cannot bypass certification eligibility", () => {
     /selects ineligible technician bravo/,
   );
 });
+
+test("malformed override discriminants and required fields fail closed", () => {
+  assert.throws(
+    () => simulateScenario(scenario, [{ eventId: "job-a", type: "BOGUS", technicianId: "bravo" }]),
+    /invalid type BOGUS/,
+  );
+  assert.throws(
+    () => simulateScenario(scenario, [{ eventId: "job-a", type: "ASSIGN" }]),
+    /requires a technicianId for assignment/,
+  );
+  assert.throws(
+    () => simulateScenario(scenario, [{ eventId: "job-a", type: "DECLINE", technicianId: "bravo" }]),
+    /decline cannot include a technicianId/,
+  );
+
+  const inheritedTypeOverride = Object.create({ type: "BOGUS" });
+  inheritedTypeOverride.eventId = "job-a";
+  inheritedTypeOverride.technicianId = "bravo";
+  assert.throws(
+    () => simulateScenario(scenario, [inheritedTypeOverride]),
+    /invalid type BOGUS/,
+  );
+});

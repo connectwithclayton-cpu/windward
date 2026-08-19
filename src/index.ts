@@ -16,9 +16,11 @@ export type {
   IntegerRange,
   JobBlueprint,
   ScenarioDefinition,
+  ServiceOutcomeCode,
   SimulationOutcome,
   SimulationOverride,
   SimulationResult,
+  SimulationTransition,
 } from "./simulation.js";
 export { DEFAULT_SCORING_WEIGHTS } from "./types.js";
 export type {
@@ -29,6 +31,7 @@ export type {
   DisqualifiedCandidateEvidence,
   Disqualifier,
   DispatchInputSnapshot,
+  DownstreamRouteConsequence,
   EligibleCandidateEvidence,
   FactorBreakdown,
   FactorEvidence,

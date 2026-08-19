@@ -10,6 +10,7 @@ import type {
   BoardState,
   CandidateEvidence,
   Decision,
+  DownstreamRouteConsequence,
   EligibleCandidateEvidence,
   ImmediateDeltas,
   Job,
@@ -33,9 +34,14 @@ export interface JobBlueprint {
   readonly requiredSkills: readonly string[];
   readonly requiredCertifications: readonly string[];
   readonly revenueCents: IntegerRange;
+  readonly lateOutcomeCode?: "DEFER_TO_NEXT_DAY";
+  readonly completionSatisfactionDelta?: number;
   readonly travelMinutesByTechnician: Readonly<Record<TechnicianId, IntegerRange>>;
   readonly routeDeltaMinutesByTechnician?: Readonly<Record<TechnicianId, IntegerRange>>;
   readonly expectedRevenueCentsByTechnician?: Readonly<Record<TechnicianId, IntegerRange>>;
+  readonly downstreamRouteConsequencesByTechnician?: Readonly<
+    Record<TechnicianId, DownstreamRouteConsequence>
+  >;
 }
 
 export interface ScenarioDefinition {
@@ -50,20 +56,42 @@ export interface ExogenousEvent {
   readonly job: Job;
 }
 
-export interface SimulationOverride {
-  readonly eventId: string;
-  readonly technicianId: TechnicianId;
-}
+export type SimulationOverride =
+  | {
+      readonly eventId: string;
+      readonly type?: "ASSIGN";
+      readonly technicianId: TechnicianId;
+    }
+  | {
+      readonly eventId: string;
+      readonly type: "DECLINE";
+    };
+
+export type ServiceOutcomeCode =
+  | "COMPLETED_IN_WINDOW"
+  | "COMPLETED_LATE"
+  | "DEFERRED_TO_NEXT_DAY"
+  | "DECLINED";
 
 export interface SimulationOutcome {
   readonly eventId: string;
   readonly decisionId: string;
-  readonly assignedTechnicianId: TechnicianId;
+  readonly assignedTechnicianId: TechnicianId | null;
   readonly overridden: boolean;
-  readonly completionMinute: number;
+  readonly completionMinute: number | null;
   readonly promisedWindow: PromisedTimeWindow;
   readonly lateByMinutes: number;
   readonly immediateDeltas: ImmediateDeltas;
+  readonly serviceOutcomeCode: ServiceOutcomeCode;
+  readonly satisfactionDelta: number;
+}
+
+export interface SimulationTransition {
+  readonly eventId: string;
+  readonly decisionId: string;
+  readonly beforeBoard: BoardState;
+  readonly afterBoard: BoardState;
+  readonly outcome: SimulationOutcome;
 }
 
 export interface SimulationResult {
@@ -71,6 +99,7 @@ export interface SimulationResult {
   readonly exogenousEvents: readonly ExogenousEvent[];
   readonly decisions: readonly Decision[];
   readonly outcomes: readonly SimulationOutcome[];
+  readonly transitions: readonly SimulationTransition[];
   readonly finalBoard: BoardState;
 }
 
@@ -128,6 +157,12 @@ export function generateExogenousEvents(
       requiredSkills: [...blueprint.requiredSkills],
       requiredCertifications: [...blueprint.requiredCertifications],
       revenueCents: randomInteger(random, blueprint.revenueCents),
+      ...(blueprint.lateOutcomeCode === undefined
+        ? {}
+        : { lateOutcomeCode: blueprint.lateOutcomeCode }),
+      ...(blueprint.completionSatisfactionDelta === undefined
+        ? {}
+        : { completionSatisfactionDelta: blueprint.completionSatisfactionDelta }),
       travelMinutesByTechnician,
       ...(routeDeltaMinutesByTechnician === undefined
         ? {}
@@ -135,6 +170,13 @@ export function generateExogenousEvents(
       ...(expectedRevenueCentsByTechnician === undefined
         ? {}
         : { expectedRevenueCentsByTechnician }),
+      ...(blueprint.downstreamRouteConsequencesByTechnician === undefined
+        ? {}
+        : {
+            downstreamRouteConsequencesByTechnician: clone(
+              blueprint.downstreamRouteConsequencesByTechnician,
+            ),
+          }),
     };
     return { eventId: blueprint.id, job };
   });
@@ -199,12 +241,13 @@ function simulateEvents(
   exogenousEvents: readonly ExogenousEvent[],
   overrides: readonly SimulationOverride[],
 ): SimulationResult {
-  const overrideByEvent = new Map<string, TechnicianId>();
-  for (const override of overrides) {
+  const overrideByEvent = new Map<string, SimulationOverride>();
+  for (const [index, override] of overrides.entries()) {
+    validateOverride(override, index);
     if (overrideByEvent.has(override.eventId)) {
       throw new RangeError(`duplicate override for event ${override.eventId}`);
     }
-    overrideByEvent.set(override.eventId, override.technicianId);
+    overrideByEvent.set(override.eventId, override);
   }
   const knownEvents = new Set(exogenousEvents.map((event) => event.eventId));
   for (const eventId of overrideByEvent.keys()) {
@@ -216,26 +259,73 @@ function simulateEvents(
   let board = clone(initialBoard);
   const decisions: Decision[] = [];
   const outcomes: SimulationOutcome[] = [];
+  const transitions: SimulationTransition[] = [];
 
   for (const event of exogenousEvents) {
+    const beforeBoard = clone(board);
     const decision = dispatch(board, event.job);
-    const selectedId = overrideByEvent.get(event.eventId) ?? decision.winner.technicianId;
+    const override = overrideByEvent.get(event.eventId);
+    if (override?.type === "DECLINE") {
+      const outcome: SimulationOutcome = {
+        eventId: event.eventId,
+        decisionId: decision.decisionId,
+        assignedTechnicianId: null,
+        overridden: true,
+        completionMinute: null,
+        promisedWindow: clone(event.job.promisedWindow),
+        lateByMinutes: 0,
+        immediateDeltas: { timeMinutes: 0, routeMinutes: 0, revenueCents: 0 },
+        serviceOutcomeCode: "DECLINED",
+        satisfactionDelta: 0,
+      };
+      decisions.push(decision);
+      outcomes.push(outcome);
+      transitions.push({
+        eventId: event.eventId,
+        decisionId: decision.decisionId,
+        beforeBoard,
+        afterBoard: clone(board),
+        outcome,
+      });
+      continue;
+    }
+    const selectedId = override?.technicianId ?? decision.winner.technicianId;
     const selected = findEligibleCandidate(decision, selectedId, event.eventId);
     const completionMinute =
       event.job.requestedStartMinute + selected.immediateDeltas.timeMinutes;
     const assignedWorkMinutes =
       selected.factors.travelTime.value.minutes + event.job.durationMinutes;
     board = applyAssignment(board, selectedId, completionMinute, assignedWorkMinutes);
-    decisions.push(decision);
-    outcomes.push({
+    const lateByMinutes = Math.max(
+      0,
+      completionMinute - event.job.promisedWindow.endMinute,
+    );
+    const outcome: SimulationOutcome = {
       eventId: event.eventId,
       decisionId: decision.decisionId,
       assignedTechnicianId: selectedId,
       overridden: selectedId !== decision.winner.technicianId,
       completionMinute,
       promisedWindow: clone(event.job.promisedWindow),
-      lateByMinutes: Math.max(0, completionMinute - event.job.promisedWindow.endMinute),
+      lateByMinutes,
       immediateDeltas: selected.immediateDeltas,
+      serviceOutcomeCode:
+        lateByMinutes === 0
+          ? "COMPLETED_IN_WINDOW"
+          : event.job.lateOutcomeCode === "DEFER_TO_NEXT_DAY"
+            ? "DEFERRED_TO_NEXT_DAY"
+            : "COMPLETED_LATE",
+      satisfactionDelta:
+        lateByMinutes === 0 ? event.job.completionSatisfactionDelta ?? 0 : 0,
+    };
+    decisions.push(decision);
+    outcomes.push(outcome);
+    transitions.push({
+      eventId: event.eventId,
+      decisionId: decision.decisionId,
+      beforeBoard,
+      afterBoard: clone(board),
+      outcome,
     });
   }
 
@@ -244,8 +334,37 @@ function simulateEvents(
     exogenousEvents: clone(exogenousEvents),
     decisions,
     outcomes,
+    transitions,
     finalBoard: board,
   });
+}
+
+function validateOverride(override: SimulationOverride, index: number): void {
+  if (override === null || typeof override !== "object") {
+    throw new RangeError(`override ${index + 1} must be an object`);
+  }
+  const candidate = override as unknown as Record<string, unknown>;
+  if (typeof candidate.eventId !== "string" || candidate.eventId.trim().length === 0) {
+    throw new RangeError(`override ${index + 1} requires a non-empty eventId`);
+  }
+
+  const hasType = Object.prototype.hasOwnProperty.call(candidate, "type");
+  if (candidate.type === "ASSIGN" || (!hasType && candidate.type === undefined)) {
+    if (
+      typeof candidate.technicianId !== "string" ||
+      candidate.technicianId.trim().length === 0
+    ) {
+      throw new RangeError(`override ${index + 1} requires a technicianId for assignment`);
+    }
+    return;
+  }
+  if (candidate.type === "DECLINE") {
+    if (Object.prototype.hasOwnProperty.call(candidate, "technicianId")) {
+      throw new RangeError(`override ${index + 1} decline cannot include a technicianId`);
+    }
+    return;
+  }
+  throw new RangeError(`override ${index + 1} has invalid type ${String(candidate.type)}`);
 }
 
 function findEligibleCandidate(
@@ -308,6 +427,12 @@ function validateBlueprint(blueprint: JobBlueprint): void {
   );
   validateRange(blueprint.durationMinutes, `${blueprint.id}.durationMinutes`, 1);
   validateRange(blueprint.revenueCents, `${blueprint.id}.revenueCents`);
+  if (
+    blueprint.completionSatisfactionDelta !== undefined &&
+    !Number.isFinite(blueprint.completionSatisfactionDelta)
+  ) {
+    throw new RangeError(`${blueprint.id}.completionSatisfactionDelta must be finite`);
+  }
   for (const [technicianId, range] of Object.entries(
     blueprint.travelMinutesByTechnician,
   )) {

@@ -20,6 +20,18 @@ export interface PromisedTimeWindow {
   readonly endMinute: number;
 }
 
+/**
+ * Descriptive evidence about work after the assignment in front of the
+ * dispatcher. Dispatch returns this evidence but deliberately never scores it.
+ */
+export interface DownstreamRouteConsequence {
+  readonly kind: "ROUTE_LOOKAHEAD";
+  readonly laterBookingMinute: number;
+  readonly laterBookingDistanceMiles: number;
+  readonly laterDriveMinutes: number;
+  readonly crossesSameAreaTwice: boolean;
+}
+
 export interface Job {
   readonly id: string;
   readonly arrivalMinute: number;
@@ -29,9 +41,14 @@ export interface Job {
   readonly requiredSkills: readonly SkillCode[];
   readonly requiredCertifications: readonly CertificationCode[];
   readonly revenueCents: number;
+  readonly lateOutcomeCode?: "DEFER_TO_NEXT_DAY";
+  readonly completionSatisfactionDelta?: number;
   readonly travelMinutesByTechnician: Readonly<Record<TechnicianId, number>>;
   readonly routeDeltaMinutesByTechnician?: Readonly<Record<TechnicianId, number>>;
   readonly expectedRevenueCentsByTechnician?: Readonly<Record<TechnicianId, number>>;
+  readonly downstreamRouteConsequencesByTechnician?: Readonly<
+    Record<TechnicianId, DownstreamRouteConsequence>
+  >;
 }
 
 export interface NormalizedJobRequirements {
@@ -93,6 +110,7 @@ interface CandidateEvidenceBase {
   readonly requirements: NormalizedJobRequirements;
   readonly factors: FactorBreakdown;
   readonly immediateDeltas: ImmediateDeltas;
+  readonly downstreamRouteConsequence: DownstreamRouteConsequence | null;
   readonly decisionId: string;
 }
 

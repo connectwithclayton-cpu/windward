@@ -288,3 +288,41 @@ test("coverage is descriptive evidence computed separately from dispatch", () =>
     ],
   );
 });
+
+test("downstream route consequences are replay evidence and never ranking factors", () => {
+  const withoutLookahead = dispatch(board(), job());
+  const withLookahead = dispatch(
+    board(),
+    job({
+      downstreamRouteConsequencesByTechnician: {
+        target: {
+          kind: "ROUTE_LOOKAHEAD",
+          laterBookingMinute: 780,
+          laterBookingDistanceMiles: 31,
+          laterDriveMinutes: 52,
+          crossesSameAreaTwice: true,
+        },
+        anchor: {
+          kind: "ROUTE_LOOKAHEAD",
+          laterBookingMinute: 780,
+          laterBookingDistanceMiles: 31,
+          laterDriveMinutes: 5,
+          crossesSameAreaTwice: false,
+        },
+      },
+    }),
+  );
+
+  assert.deepEqual(
+    withLookahead.ranking.map(({ technicianId, rank, score }) => ({ technicianId, rank, score })),
+    withoutLookahead.ranking.map(({ technicianId, rank, score }) => ({ technicianId, rank, score })),
+  );
+  assert.deepEqual(withLookahead.winner.downstreamRouteConsequence, {
+    kind: "ROUTE_LOOKAHEAD",
+    laterBookingMinute: 780,
+    laterBookingDistanceMiles: 31,
+    laterDriveMinutes: 52,
+    crossesSameAreaTwice: true,
+  });
+  assert.notEqual(withLookahead.decisionId, withoutLookahead.decisionId);
+});
