@@ -43,6 +43,7 @@ test("protected choice resolves one favourable world before the matched distribu
   );
   const receiptHtml = renderRiskConsole(recorded);
   assert.equal(recorded.phase, "receipt");
+  assert.match(recorded.eventLog[0] ?? "", /loss-limit breaches moved 15 → 0/);
   assert.match(receiptHtml, /Override recorded — weekend protection added/);
   assert.match(receiptHtml, /loss-limit breaches moved 15 → 0/);
 
@@ -74,6 +75,11 @@ test("both choice branches reach policy debriefs that separate luck from quality
 
   const directDebrief = openRiskDebrief(reachDistribution("direct-repair"));
   const directHtml = renderRiskConsole(directDebrief);
+  const directReceipt = recordRiskChoice(
+    startRiskCase(createInitialRiskConsoleState()),
+    "direct-repair",
+  );
+  assert.match(directReceipt.eventLog[0] ?? "", /15 of 100 outcomes remain beyond the loss limit/);
   assert.match(directHtml, /The optimiser did its job/);
   assert.match(directHtml, /This Saturday happened to work/);
   assert.match(directHtml, /lucky result did not make the exposure compliant/);

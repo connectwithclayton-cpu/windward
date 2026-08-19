@@ -60,8 +60,8 @@ export function recordRiskChoice(
   if (state.phase !== "decision" || state.planChoice !== null) return state;
   const comparison = runRiskCohortAndBaseline(RISK_APPETITE_CASE, planChoice);
   const eventLog = planChoice === "protect-weekend"
-    ? "3:25 PM · Override recorded: weekend protection added; loss-limit breaches moved 15 → 0."
-    : "3:25 PM · Keep recorded: direct repair retained; 15 of 100 outcomes remain beyond the loss limit.";
+    ? `3:25 PM · Override recorded: weekend protection added; loss-limit breaches moved ${comparison.baseline.lossLimitBreachCount} → ${comparison.player.lossLimitBreachCount}.`
+    : `3:25 PM · Keep recorded: direct repair retained; ${comparison.player.lossLimitBreachCount} of ${comparison.player.worlds.length} outcomes remain beyond the loss limit.`;
   return update(state, {
     phase: "receipt",
     planChoice,
