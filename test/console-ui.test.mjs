@@ -9,6 +9,8 @@ class FakeElement {
     this.disabled = false;
     this.dataset = {};
     this.listeners = new Map();
+    this.queryResults = new Map();
+    this.focusCount = 0;
   }
 
   addEventListener(type, listener) {
@@ -19,11 +21,13 @@ class FakeElement {
     return this;
   }
 
-  querySelector() {
-    return null;
+  querySelector(selector) {
+    return this.queryResults.get(selector) ?? null;
   }
 
-  focus() {}
+  focus() {
+    this.focusCount += 1;
+  }
 
   click(action) {
     const listener = this.listeners.get("click");
@@ -77,7 +81,11 @@ test("console meter and route map follow live state at the render boundary", () 
   assert.match(app.innerHTML, /Route updated: Luis Alvarez/);
   assert.match(app.innerHTML, /aria-valuenow="1"/);
 
+  const activeShiftHeading = new FakeElement("#shift-active-title");
+  app.queryResults.set("#shift-active-title", activeShiftHeading);
   app.click("continue");
+  assert.equal(activeShiftHeading.focusCount, 1);
+  assert.match(app.innerHTML, /id="shift-active-title" tabindex="-1"/);
   assert.doesNotMatch(app.innerHTML, /class="route-map"/);
   app.click("open-coverage");
   app.click("accept-coverage");

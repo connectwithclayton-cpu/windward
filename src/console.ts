@@ -321,7 +321,7 @@ function renderObservation(): string {
     <section class="shift-handoff" aria-labelledby="shift-active-title">
       <div>
         <p class="eyebrow">Before the next booking</p>
-        <h2 id="shift-active-title">The board is live.</h2>
+        <h2 id="shift-active-title" tabindex="-1">The board is live.</h2>
         <p>The route map is gone. Review the heat context and remaining emergency coverage before the next job arrives.</p>
       </div>
       <button class="primary-button" type="button" data-action="open-coverage">Continue shift</button>
@@ -575,7 +575,9 @@ function focusCurrent(action: string): void {
   window.requestAnimationFrame(() => {
     const selector = action === "keep" || action === "override"
       ? "#decision-confirmation"
-      : "#main-content h1[tabindex='-1']";
+      : action === "continue"
+        ? "#shift-active-title"
+        : "#main-content h1[tabindex='-1']";
     app.querySelector<HTMLElement>(selector)?.focus();
   });
 }
