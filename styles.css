@@ -76,6 +76,7 @@ p, h1, h2, h3, li, dt, dd, button, summary, code { overflow-wrap: anywhere; }
   cursor: pointer;
 }
 .quiet-button { border: 1px solid rgba(255,255,255,.55); color: white; background: transparent; }
+.quiet-button { white-space: nowrap; }
 .quiet-button:hover:not(:disabled) { background: rgba(255,255,255,.1); }
 .quiet-button:disabled, .primary-button:disabled, .secondary-button:disabled { opacity: .46; cursor: not-allowed; }
 .primary-button { border: 2px solid var(--navy); color: white; background: var(--navy); }
