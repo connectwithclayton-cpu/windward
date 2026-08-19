@@ -108,6 +108,31 @@ function normalizeInput(boardState: BoardState, job: Job) {
     if (revenue !== undefined) {
       assertFiniteNumber(revenue, `expectedRevenueCentsByTechnician.${technician.id}`);
     }
+    const downstream = job.downstreamRouteConsequencesByTechnician?.[technician.id];
+    if (downstream !== undefined) {
+      if (downstream.kind !== "ROUTE_LOOKAHEAD") {
+        throw new RangeError(
+          `downstreamRouteConsequencesByTechnician.${technician.id}.kind must be ROUTE_LOOKAHEAD`,
+        );
+      }
+      assertFiniteNumber(
+        downstream.laterBookingMinute,
+        `downstreamRouteConsequencesByTechnician.${technician.id}.laterBookingMinute`,
+      );
+      assertFiniteNumber(
+        downstream.laterBookingDistanceMiles,
+        `downstreamRouteConsequencesByTechnician.${technician.id}.laterBookingDistanceMiles`,
+      );
+      assertFiniteNumber(
+        downstream.laterDriveMinutes,
+        `downstreamRouteConsequencesByTechnician.${technician.id}.laterDriveMinutes`,
+      );
+      if (typeof downstream.crossesSameAreaTwice !== "boolean") {
+        throw new TypeError(
+          `downstreamRouteConsequencesByTechnician.${technician.id}.crossesSameAreaTwice must be boolean`,
+        );
+      }
+    }
   }
 
   const normalizedJob: Job = {
@@ -143,6 +168,19 @@ function normalizeInput(boardState: BoardState, job: Job) {
               technician.id,
               job.expectedRevenueCentsByTechnician?.[technician.id] ?? job.revenueCents,
             ]),
+          ),
+        }),
+    ...(job.downstreamRouteConsequencesByTechnician === undefined
+      ? {}
+      : {
+          downstreamRouteConsequencesByTechnician: Object.fromEntries(
+            technicians.flatMap((technician) => {
+              const consequence =
+                job.downstreamRouteConsequencesByTechnician?.[technician.id];
+              return consequence === undefined
+                ? []
+                : [[technician.id, clone(consequence)] as const];
+            }),
           ),
         }),
   };
@@ -268,6 +306,8 @@ function evaluateCandidate(
       routeMinutes: job.routeDeltaMinutesByTechnician?.[technician.id] ?? 0,
       revenueCents: expectedRevenueCents,
     },
+    downstreamRouteConsequence:
+      job.downstreamRouteConsequencesByTechnician?.[technician.id] ?? null,
     decisionId,
   };
 

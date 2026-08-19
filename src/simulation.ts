@@ -10,6 +10,7 @@ import type {
   BoardState,
   CandidateEvidence,
   Decision,
+  DownstreamRouteConsequence,
   EligibleCandidateEvidence,
   ImmediateDeltas,
   Job,
@@ -36,6 +37,9 @@ export interface JobBlueprint {
   readonly travelMinutesByTechnician: Readonly<Record<TechnicianId, IntegerRange>>;
   readonly routeDeltaMinutesByTechnician?: Readonly<Record<TechnicianId, IntegerRange>>;
   readonly expectedRevenueCentsByTechnician?: Readonly<Record<TechnicianId, IntegerRange>>;
+  readonly downstreamRouteConsequencesByTechnician?: Readonly<
+    Record<TechnicianId, DownstreamRouteConsequence>
+  >;
 }
 
 export interface ScenarioDefinition {
@@ -135,6 +139,13 @@ export function generateExogenousEvents(
       ...(expectedRevenueCentsByTechnician === undefined
         ? {}
         : { expectedRevenueCentsByTechnician }),
+      ...(blueprint.downstreamRouteConsequencesByTechnician === undefined
+        ? {}
+        : {
+            downstreamRouteConsequencesByTechnician: clone(
+              blueprint.downstreamRouteConsequencesByTechnician,
+            ),
+          }),
     };
     return { eventId: blueprint.id, job };
   });

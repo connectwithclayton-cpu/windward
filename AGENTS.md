@@ -7,6 +7,9 @@ This file is the project's committed home for project-intrinsic agent knowledge:
   and provenance sections.
 - The package entry point is `src/index.ts`; `npm run check` is the authoritative
   local typecheck, build, and behavioral-test command.
+- The static console enters through `index.html` and `src/console.ts`; shared
+  engine-to-interface binding lives under `src/console/` and must not duplicate
+  ranking or eligibility rules.
 - Keep coverage descriptive and separate from ranking. The dispatcher's missing
   lookahead and reserve heuristic are intentional product behavior, and a job's
   explicit promised window is replay/outcome data rather than a scoring factor.

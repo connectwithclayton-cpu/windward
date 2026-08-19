@@ -10,8 +10,28 @@ it is about to get something wrong.
 Built around a question worth asking: when a system dispatches on its own, what is
 the human actually for?
 
-**Status:** the pure dispatch and replay engine is implemented; the interface is
-not built yet.
+**Status:** the pure dispatch and replay engine and the first supervision-console
+event are implemented. The console currently covers orientation and the guided
+route cascade; later scenario events and the causal debrief remain deliberately
+out of scope while the reserve-finale research is unresolved.
+
+## Supervision console
+
+The dependency-free static client in `index.html` imports the compiled engine and
+console layer from `dist/`. It presents the fixed five-technician board, the two
+persistent operational signals, the shared Keep/Override decision grammar, the
+engine-backed Why drawer, and a separate reproducible engineering trace.
+
+After `npm run build`, serve the repository root with any static file server and
+open `index.html`. For example:
+
+```sh
+python3 -m http.server 4173
+```
+
+The UI does not score, re-rank, or re-derive eligibility. Descriptive downstream
+route evidence is returned by the engine alongside each candidate but remains
+outside the dispatcher's scoring factors.
 
 ## Dispatch engine
 

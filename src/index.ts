@@ -29,6 +29,7 @@ export type {
   DisqualifiedCandidateEvidence,
   Disqualifier,
   DispatchInputSnapshot,
+  DownstreamRouteConsequence,
   EligibleCandidateEvidence,
   FactorBreakdown,
   FactorEvidence,
