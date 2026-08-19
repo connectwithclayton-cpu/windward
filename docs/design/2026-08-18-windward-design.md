@@ -62,9 +62,19 @@ demand and after the run.
 ### Setting
 
 The scenario is a summer morning in Central Florida with five fictional
-technicians. Five lanes are deliberate: eight-lane boards are common in real
-dispatch products but are unreadable to a cold reviewer when combined with
-instructions and AI explanations.
+technicians. The fixed roster is:
+
+| Technician | Home area | Primary skill | Certification | Availability in the scenario |
+|---|---|---|---|---|
+| Maya Ortiz | Winter Park | Diagnostics and repair | EPA 608 Type II | Free at 11:00; booked in the east at 1:00 |
+| Luis Alvarez | Kissimmee | Diagnostics and repair | EPA 608 Type II | Free at 11:00; available for the route alternative |
+| Priya Shah | Lake Mary | Maintenance | EPA 608 Type II | Available for the afternoon maintenance window |
+| Andre Brooks | Orlando | No-cool repair | EPA 608 Universal | Qualified for the after-2-PM emergency slot |
+| Sofia Reyes | Apopka | Maintenance and repair | EPA 608 Type I | Available for morning work; not qualified for the no-cool slot |
+
+Five lanes are deliberate: eight-lane boards are common in real dispatch
+products but are unreadable to a cold reviewer when combined with instructions
+and AI explanations.
 
 The scenario has one teaching arc: route lookahead makes the dispatcher’s
 myopia visible, then the player applies the same insight to uncertain future
