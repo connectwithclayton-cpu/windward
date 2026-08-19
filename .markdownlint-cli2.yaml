@@ -1,0 +1,5 @@
+config:
+  # Prose and tables are intentionally readable as source without enforcing an
+  # arbitrary line width or separator-cell spacing.
+  MD013: false
+  MD060: false
