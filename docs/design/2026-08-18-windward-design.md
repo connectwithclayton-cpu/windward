@@ -106,6 +106,12 @@ the route itself:
 
 The player sees the dispatcher’s pick, the second-ranked alternative, the
 minutes and dollars associated with each, and **Keep** and **Override** buttons.
+The decision card also exposes the six engine scoring factors—travel time,
+skill match, certification, availability, revenue fit, and utilisation—with
+their evidence values and score contributions. A final **Future impact** slot
+is intentionally empty (`—`, **Not in model**) rather than reporting a zero.
+The card’s deferred-cost line names the omitted later route minutes and states
+that the future dollar impact is not modelled.
 The one-click alternative is labelled **Assign Luis · saves 47 min**.
 The explanation uses the following shape:
 
@@ -120,7 +126,9 @@ plain language. Certification mismatch is never presented as a dispatcher
 mistake because certification is a hard engine constraint.
 
 If the player overrides, the route redraws immediately and a one-line event-log
-entry confirms the action. Resolving this event starts the active-shift clock.
+entry confirms the action. The scored route remains visually distinct from a
+delayed, ghosted downstream backtrack; the redraw makes the override legible.
+Resolving this event starts the active-shift clock.
 
 ### Event 2: live coverage tradeoff
 
@@ -139,10 +147,13 @@ coverage from 1 to 0. The decision is explicitly two-sided:
 - **Hold window open** — `$119 at risk · emergency coverage 1`
 
 In the shared decision grammar, accepting is **Keep** and holding the window is
-**Override**. The player knows afternoon no-cool demand is likely but is never
-told that a particular customer will call at a particular time. The decision is
-therefore a trade of certain revenue against probable need, not hidden-answer
-recall.
+**Override**. The coverage card uses the same six-factor evidence shape and the
+same intentionally empty **Future impact** slot. Its deferred-cost line names
+the lost emergency coverage while leaving future emergency minutes and dollars
+deliberately absent. The player knows afternoon no-cool demand is likely but is
+never told that a particular customer will call at a particular time. The
+decision is therefore a trade of certain revenue against probable need, not
+hidden-answer recall.
 
 The coverage meter moves immediately after the player acts, and the event log
 records the choice in one line. Non-scored board activity may carry the shift
@@ -199,6 +210,12 @@ Every override changes the relevant state immediately:
 
 The player must never have to infer whether an override was recorded.
 
+The decision card is the only surface for deferred-cost explanations. The
+route card describes omitted later minutes and unmodelled future dollars; the
+coverage card describes the coverage loss and leaves future emergency minutes
+and dollars absent. Neither downstream evidence, coverage, reserve capacity,
+promised windows, or any other forward-looking term becomes a ranking factor.
+
 ### Explanation language
 
 Cards use plain language first. Acronyms such as EPA 608, RSC, SLA, maintenance
@@ -227,9 +244,10 @@ On narrow viewports, the same information becomes a focused, single-decision
 layout rather than a horizontally scrolling board. The experience does not wait
 until after the timer starts to announce a desktop requirement.
 
-All state changes are reduced-motion safe. With reduced motion enabled, route
-and meter updates may change directly or use a restrained transition; meaning
-cannot depend on animation. No element continuously pulses or moves.
+Motion is short, event-bound feedback only: route redraw, coverage changing
+from 1 to 0, delayed ghost arrival, and restrained phase entry. With reduced
+motion enabled, each becomes a direct state change; meaning cannot depend on
+animation. No element continuously pulses, loops, or moves.
 
 ## Dispatcher and replay contract
 

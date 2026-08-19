@@ -74,10 +74,16 @@ assert.ok(app);
 
 test("console meter and route map follow live state at the render boundary", () => {
   app.click("start");
+
+  assert.match(app.innerHTML, /class="score-window"/);
+  assert.match(app.innerHTML, /Future impact/);
+  assert.match(app.innerHTML, /Not in model/);
+  assert.match(app.innerHTML, /class="consequence-ghost/);
+  assert.match(app.innerHTML, /Not scored · \+52 min later/);
   app.click("override");
 
   assert.match(app.innerHTML, /Override recorded/);
-  assert.match(app.innerHTML, /class="route-map"/);
+  assert.match(app.innerHTML, /class="route-map /);
   assert.match(app.innerHTML, /Route updated: Luis Alvarez/);
   assert.match(app.innerHTML, /aria-valuenow="1"/);
 
@@ -89,11 +95,14 @@ test("console meter and route map follow live state at the render boundary", () 
   assert.doesNotMatch(app.innerHTML, /class="route-map"/);
   app.click("open-coverage");
   app.click("accept-coverage");
-  app.click("continue-emergency");
 
   assert.match(app.innerHTML, /aria-valuenow="0"/);
   assert.match(app.innerHTML, /Emergency coverage after 2 PM: 0 tech/);
-  assert.match(app.innerHTML, /class="coverage-fill" style="width: 0%;"/);
+  assert.match(app.innerHTML, /class="signal coverage-signal is-changing"/);
+  assert.match(app.innerHTML, /Changed 1 → 0/);
+  assert.match(app.innerHTML, /--coverage-to: 0/);
+
+  app.click("continue-emergency");
   assert.match(app.innerHTML, /Safety impact: residents remain without cooling until tomorrow/);
   assert.match(app.innerHTML, /class="board-panel"/);
   assert.match(app.innerHTML, /Five fictional technicians/);

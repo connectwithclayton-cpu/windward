@@ -42,6 +42,14 @@ test("Event 1 presentation is bound to engine ranking and evidence", () => {
   assert.equal(EVENT_ONE_GRAMMAR.immediateRevenueDifferenceCents, 0);
   assert.equal(EVENT_ONE_GRAMMAR.laterMinutesSavedByOverride, 47);
   assert.equal(EVENT_ONE_GRAMMAR.omittedConsequence?.laterDriveMinutes, 52);
+  assert.deepEqual(
+    EVENT_ONE_GRAMMAR.chosen.factors.map(({ key, contribution }) => ({ key, contribution })),
+    Object.entries(EVENT_ONE_DECISION.winner.factors).map(([key, factor]) => ({
+      key,
+      contribution: factor.contribution,
+    })),
+  );
+  assert.equal(EVENT_ONE_GRAMMAR.chosen.factors.length, 6);
   assert.equal(EVENT_ONE_GRAMMAR.hardConstraints.length, 1);
   assert.equal(EVENT_ONE_GRAMMAR.hardConstraints[0]?.technicianId, "sofia-reyes");
   assert.equal(EVENT_ONE_GRAMMAR.hardConstraints[0]?.reasonCode, "HARD_CONSTRAINT_FAILED");

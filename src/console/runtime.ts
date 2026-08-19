@@ -57,6 +57,20 @@ export const INITIAL_COVERAGE: CoverageEvidence = computeCoverage(
   EVENT_ONE_SCENARIO.initialBoard,
   EMERGENCY_COVERAGE_REQUIREMENT,
 );
+const coverageKeepTransition = previewResult.transitions[1];
+if (coverageKeepTransition === undefined) {
+  throw new Error("Coverage event did not produce a baseline transition");
+}
+export const COVERAGE_KEEP_PROJECTION = Object.freeze({
+  before: computeCoverage(
+    coverageKeepTransition.beforeBoard,
+    EMERGENCY_COVERAGE_REQUIREMENT,
+  ).availableQualifiedCount,
+  after: computeCoverage(
+    coverageKeepTransition.afterBoard,
+    EMERGENCY_COVERAGE_REQUIREMENT,
+  ).availableQualifiedCount,
+});
 
 export function createInitialConsoleState(): ConsoleState {
   return Object.freeze({
