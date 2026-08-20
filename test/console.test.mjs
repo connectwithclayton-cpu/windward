@@ -15,7 +15,6 @@ import {
   recordCoverageChoice,
   recordRouteChoice,
   startShift,
-  tick,
   togglePause,
 } from "../dist/console/runtime.js";
 
@@ -56,20 +55,17 @@ test("Event 1 presentation is bound to engine ranking and evidence", () => {
   assert.equal(INITIAL_COVERAGE.availableQualifiedCount, 1);
 });
 
-test("guided route choice records both paths before the active clock starts", () => {
+test("guided route choice records both paths before the active shift starts", () => {
   const decision = startShift(createInitialConsoleState());
   assert.equal(decision.phase, "route-decision");
-  assert.equal(decision.timerStarted, false);
 
   const kept = recordRouteChoice(decision, "keep");
   assert.equal(kept.phase, "route-receipt");
-  assert.equal(kept.timerStarted, false);
   assert.equal(kept.assignedTechnicianId, EVENT_ONE_GRAMMAR.chosen.technicianId);
   assert.match(kept.eventLog[0] ?? "", /choice kept/i);
 
   const overridden = recordRouteChoice(decision, "override");
   assert.equal(overridden.phase, "route-receipt");
-  assert.equal(overridden.timerStarted, false);
   assert.equal(overridden.assignedTechnicianId, EVENT_ONE_GRAMMAR.second.technicianId);
   assert.equal(overridden.result?.outcomes[0]?.overridden, true);
   assert.match(overridden.eventLog[0] ?? "", /override recorded/i);
@@ -77,8 +73,6 @@ test("guided route choice records both paths before the active clock starts", ()
 
   const active = continueToActiveShift(overridden);
   assert.equal(active.phase, "observation");
-  assert.equal(active.timerStarted, true);
-  assert.equal(tick(active).timerRemaining, 89);
 });
 
 function reachCoverageDecision(routeChoice = "override") {
@@ -161,11 +155,9 @@ test("pause and restart state remain deterministic throughout the active shift",
   );
   const paused = togglePause(active);
   assert.equal(paused.paused, true);
-  assert.equal(tick(paused), paused);
   assert.equal(openCoverageDecision(paused), paused);
 
   const restarted = createInitialConsoleState();
   assert.equal(restarted.phase, "briefing");
-  assert.equal(restarted.timerRemaining, 90);
   assert.deepEqual(restarted.eventLog, []);
 });

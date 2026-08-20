@@ -98,7 +98,7 @@ function renderConsole(current: ConsoleState): string {
 function renderBriefing(current: ConsoleState): string {
   return `
     <main id="main-content" class="briefing-stage phase-enter phase-briefing">
-      <div class="console-shell frozen-board" aria-hidden="true">
+      <div class="console-shell frozen-board" inert aria-hidden="true">
         ${renderSignals(current)}
         ${renderBoard(current)}
       </div>
@@ -208,6 +208,8 @@ function renderDecision(current: ConsoleState): string {
     ? EVENT_ONE_GRAMMAR.second.name
     : EVENT_ONE_GRAMMAR.chosen.name;
   const omittedConsequence = EVENT_ONE_GRAMMAR.omittedConsequence;
+  // The receipt remains part of the live route decision, so keep the map through it for the override redraw; see docs/design/2026-08-18-windward-design.md Interface specification map rule.
+  const routeDecisionLive = current.phase === "route-decision" || current.phase === "route-receipt";
   const confirmation = recorded
     ? `<div class="recorded" id="decision-confirmation" role="status" tabindex="-1">
         <strong>${current.routeChoice === "override" ? "Override recorded" : "Keep recorded"} — ${escapeHtml(selectedName)} assigned.</strong>
@@ -247,7 +249,7 @@ function renderDecision(current: ConsoleState): string {
         overrideAction: "override",
         disabled: recorded,
       })}
-      ${current.phase === "route-decision" || current.phase === "route-receipt" ? renderRouteMap(current) : ""}
+      ${routeDecisionLive ? renderRouteMap(current) : ""}
       ${omittedConsequence === null ? "" : renderDeferredCost(
         `+${omittedConsequence.laterDriveMinutes} min later driving`,
         "Future dollar impact not modeled",
@@ -619,7 +621,7 @@ function updateHeader(): void {
     pauseButton.textContent = "Pause";
     return;
   }
-  pauseButton.disabled = !["observation", "coverage-decision", "coverage-receipt"].includes(state.phase) || !state.timerStarted;
+  pauseButton.disabled = !["observation", "coverage-decision", "coverage-receipt"].includes(state.phase);
   pauseButton.textContent = state.paused ? "Resume" : "Pause";
 }
 

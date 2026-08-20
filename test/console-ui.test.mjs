@@ -46,7 +46,6 @@ class ActionTarget extends FakeElement {
 
 const elements = new Map([
   ["#app", new FakeElement("#app")],
-  ["#shift-clock", new FakeElement("#shift-clock")],
   ["#pause-button", new FakeElement("#pause-button")],
   ["#restart-button", new FakeElement("#restart-button")],
 ]);
@@ -60,9 +59,6 @@ globalThis.document = {
 globalThis.window = {
   requestAnimationFrame(callback) {
     callback();
-    return 0;
-  },
-  setInterval() {
     return 0;
   },
 };

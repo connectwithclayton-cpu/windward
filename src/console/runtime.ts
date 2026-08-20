@@ -35,8 +35,6 @@ export interface ConsoleState {
   readonly coverageChoice: CoverageChoice | null;
   readonly assignedTechnicianId: TechnicianId | null;
   readonly eventLog: readonly string[];
-  readonly timerRemaining: number;
-  readonly timerStarted: boolean;
   readonly paused: boolean;
   readonly coverage: number;
   readonly result: SimulationResult | null;
@@ -79,8 +77,6 @@ export function createInitialConsoleState(): ConsoleState {
     coverageChoice: null,
     assignedTechnicianId: null,
     eventLog: Object.freeze([]),
-    timerRemaining: 90,
-    timerStarted: false,
     paused: false,
     coverage: INITIAL_COVERAGE.availableQualifiedCount,
     result: null,
@@ -123,7 +119,7 @@ export function recordRouteChoice(
 
 export function continueToActiveShift(state: ConsoleState): ConsoleState {
   if (state.phase !== "route-receipt" || state.routeChoice === null) return state;
-  return update(state, { phase: "observation", timerStarted: true, paused: false });
+  return update(state, { phase: "observation", paused: false });
 }
 
 export function openCoverageDecision(state: ConsoleState): ConsoleState {
@@ -192,20 +188,8 @@ export function openDebrief(state: ConsoleState): ConsoleState {
 }
 
 export function togglePause(state: ConsoleState): ConsoleState {
-  if (!isActiveShiftPhase(state.phase) || !state.timerStarted) return state;
+  if (!isActiveShiftPhase(state.phase)) return state;
   return update(state, { paused: !state.paused });
-}
-
-export function tick(state: ConsoleState): ConsoleState {
-  if (
-    !isActiveShiftPhase(state.phase) ||
-    !state.timerStarted ||
-    state.paused ||
-    state.timerRemaining === 0
-  ) {
-    return state;
-  }
-  return update(state, { timerRemaining: state.timerRemaining - 1 });
 }
 
 export function openTrace(state: ConsoleState): ConsoleState {
