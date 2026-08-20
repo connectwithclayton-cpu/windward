@@ -22,6 +22,7 @@ import {
   renderBadge,
   renderDecisionPanel,
   renderEventLog as renderEventLogComponent,
+  renderHonestLimits,
   renderLabelledField,
   renderStatCell,
   renderSurface,
@@ -564,6 +565,7 @@ function renderDebrief(current: ConsoleState): string {
         <div><span>Same-day completion</span><strong>${held ? "Emergency completed today" : "Emergency moved to tomorrow"}</strong></div>
         <div><span>Customer outcome</span><strong>${held ? `+${satisfactionDifference} satisfaction` : "No same-day emergency service"}</strong></div>
       </div>
+      ${renderHonestLimits("horizon-honest-limits-title")}
       <div class="debrief-actions"><button class="secondary-button" type="button" data-action="trace">Open engineering trace</button><button class="primary-button" type="button" data-action="restart">Restart authored case study</button></div>
     </section>
     ${renderProvenance()}
@@ -659,6 +661,10 @@ app.addEventListener("click", (event) => {
   }
 
   if (selectedCase === "breadth") {
+    if (action === "replay-breadth-walk") {
+      replayBreadthWalk();
+      return;
+    }
     if (action === "start-breadth") breadthState = startBreadthCase(breadthState);
     if (action === "keep-breadth") breadthState = recordBreadthChoice(breadthState, "dispatcher-recovery");
     if (action === "minimum-touch-breadth") breadthState = recordBreadthChoice(breadthState, "minimum-touch");
@@ -687,6 +693,14 @@ app.addEventListener("click", (event) => {
   render();
   focusCurrent(action);
 });
+
+function replayBreadthWalk(): void {
+  const walk = app.querySelector<HTMLElement>("[data-assignment-walk]");
+  if (walk === null) return;
+  walk.classList.remove("is-walking");
+  void walk.offsetWidth;
+  walk.classList.add("is-walking");
+}
 
 pauseButton.addEventListener("click", () => {
   if (selectedCase === "risk" || selectedCase === "breadth") return;

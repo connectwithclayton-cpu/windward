@@ -19,6 +19,7 @@ import {
   renderBadge,
   renderDecisionPanel,
   renderEventLog,
+  renderHonestLimits,
   renderStatCell,
 } from "./components.js";
 import { formatClockMinute } from "./decision-model.js";
@@ -190,7 +191,7 @@ function renderBreadthDecision(state: BreadthConsoleState): string {
         ${comparison === null ? "" : `<div class="recorded breadth-recorded" id="breadth-confirmation" role="status" tabindex="-1">${confirmation}</div>
           ${renderEventLog({ titleId: "breadth-event-log-title", entries: state.eventLog, className: "breadth-event-log" })}
           <button class="primary-button wide continue-button" type="button" data-action="continue-breadth-outcome">Continue through recovered work</button>`}
-        ${renderRecoveryMatrix(comparison?.baseline ?? BREADTH_MACHINE_PREVIEW.baseline, comparison?.player ?? BREADTH_MINIMUM_TOUCH_PREVIEW.player)}
+        ${renderRecoveryMatrix(comparison?.baseline ?? BREADTH_MACHINE_PREVIEW.baseline, comparison?.player ?? BREADTH_MINIMUM_TOUCH_PREVIEW.player, state.phase === "decision")}
       `,
     })}
     ${renderBreadthBoard(state)}
@@ -230,17 +231,22 @@ function renderChoiceCards(disabled: boolean): string {
   </div>`;
 }
 
-function renderRecoveryMatrix(result: SimulationResult, alternative: SimulationResult): string {
+function renderRecoveryMatrix(result: SimulationResult, alternative: SimulationResult, autoplay: boolean): string {
   const replayFacts = replayCardinality(result);
   const candidateRows = result.decisions.reduce((total, decision) => total + decision.ranking.length, 0);
+  const pivotalIndex = findPivotalIndex(result);
   const matrixIntro = replayFacts.recheckedEveryDecision
     ? `Each visit became current in this order. After every actual assignment, the dispatcher used the updated availability and assigned work to rank all ${replayFacts.technicianFieldSize} remaining technicians again across ${replayFacts.assignmentCount} assignments.`
     : `Each visit became current in this order. Replay evidence exposes ${replayFacts.technicianFieldSize} technician candidates for ${replayFacts.assignmentCount} assignments, but does not support a complete re-evaluation claim.`;
   return `<section class="breadth-matrix" aria-labelledby="breadth-matrix-title">
     <div class="section-heading"><div><p class="eyebrow">Recovery matrix · engine evidence</p><h2 id="breadth-matrix-title">${capitalizeNumberWord(result.decisions.length)} serial assignments</h2></div><span class="board-note">${candidateRows} candidate rows · same ${FACTOR_ORDER.length} factors</span></div>
     <p class="matrix-intro">${matrixIntro}</p>
-    <div class="recovery-rows">
-      ${result.decisions.map((decision, index) => renderRecoveryRow(decision, result, alternative, index, findPivotalIndex(result), replayFacts)).join("")}
+    <div class="assignment-walk-heading">
+      <p><strong>Focus walk</strong><span>The emphasis follows the recorded order. Every row and result remains available while it plays.</span></p>
+      <button class="secondary-button assignment-walk-replay" type="button" data-action="replay-breadth-walk">Replay assignment focus</button>
+    </div>
+    <div class="recovery-rows assignment-walk${autoplay ? " is-walking" : ""}" data-assignment-walk>
+      ${result.decisions.map((decision, index) => renderRecoveryRow(decision, result, alternative, index, pivotalIndex, replayFacts)).join("")}
     </div>
   </section>`;
 }
@@ -262,17 +268,28 @@ function renderRecoveryRow(
     ? `${decision.inputSnapshot.job.promisedWindow.endMinute - (outcome.completionMinute ?? 0)} min inside window`
     : `${outcome.lateByMinutes} min late`;
   const previousAssignedId = result.outcomes[index - 1]?.assignedTechnicianId;
+  const currentWinnerName = NAMES[decision.winner.technicianId] ?? decision.winner.technicianId;
+  const previousWinnerName = previousAssignedId === null || previousAssignedId === undefined
+    ? null
+    : NAMES[previousAssignedId] ?? previousAssignedId;
+  const sequenceCopy = index === 0
+    ? `Current assignment · all ${replayFacts.technicianFieldSize} ranked · ${currentWinnerName} selected and recorded`
+    : pivotal && previousWinnerName !== null
+      ? `${index} assignment recorded · current board carried forward · all ${replayFacts.technicianFieldSize} rechecked · winner changes ${previousWinnerName} → ${currentWinnerName}`
+      : `${index} assignments recorded · current board carried forward · all ${replayFacts.technicianFieldSize} rechecked · ${currentWinnerName} selected`;
   const turn = pivotal && previousAssignedId !== null && previousAssignedId !== undefined
     ? `<span class="breadth-turn"><strong>${escapeHtml(NAMES[previousAssignedId] ?? previousAssignedId)}</strong><i aria-hidden="true">→</i><span>${index === 1 ? "first assignment recorded" : "assignment " + index + " recorded"}</span><i aria-hidden="true">→</i><strong>${replayFacts.recheckedEveryDecision ? `All ${replayFacts.technicianFieldSize} rechecked` : "Recheck evidence incomplete"}</strong><i aria-hidden="true">→</i><strong>${escapeHtml(NAMES[decision.winner.technicianId] ?? decision.winner.technicianId)}</strong></span>`
     : "";
-  return `<details class="recovery-row ${pivotal ? "is-pivotal" : ""}">
+  return `<details class="recovery-row walk-step walk-step-${index + 1} ${pivotal ? "is-pivotal" : ""}">
     <summary>
+      <span class="walk-current" aria-hidden="true">Current assignment</span>
       <span class="recovery-order">${index + 1}</span>
       <span class="recovery-visit"><strong>${escapeHtml(JOB_NAMES[decision.inputSnapshot.job.id] ?? decision.inputSnapshot.job.id)}</strong><small>${formatClockMinute(decision.inputSnapshot.job.requestedStartMinute)} requested</small></span>
       <span class="recovery-winner"><small>Current winner</small><strong>${escapeHtml(NAMES[decision.winner.technicianId] ?? decision.winner.technicianId)}</strong></span>
       <span class="recovery-reason"><small>Key reason</small><strong>${escapeHtml(renderWinnerReason(decision))}</strong></span>
       <span class="recovery-field"><small>Eligible field</small><strong>${eligible} eligible · ${excluded} excluded</strong></span>
       <span class="recovery-window"><small>Outcome replay</small><strong>${escapeHtml(windowResult)}</strong></span>
+      <span class="walk-sequence-copy">${escapeHtml(sequenceCopy)}</span>
       ${turn}
     </summary>
     <div class="recovery-evidence">
@@ -551,6 +568,7 @@ function renderBreadthDebrief(state: BreadthConsoleState): string {
         ? `The dispatcher did not foresee the day. It re-evaluated every technician after each assignment — ${replayFacts.technicianFieldSize} technician candidates for each of ${replayFacts.assignmentCount} assignments — and applied the same rules every time. Your job was to decide whether that evidence was sufficient to release the recovery—not to repair each row yourself.`
         : `The dispatcher did not foresee the day. The replay exposed ${replayFacts.technicianFieldSize} technician candidates for ${replayFacts.assignmentCount} assignments, but its candidate-field sizes did not support a complete re-evaluation claim. Your job was to decide whether that evidence was sufficient to release the recovery—not to repair each row yourself.`}</blockquote>
       <p class="breadth-teaching">${escapeHtml(finalTeaching)}</p>
+      ${renderHonestLimits("breadth-honest-limits-title")}
       <div class="debrief-actions"><button class="secondary-button" type="button" data-action="open-breadth-trace">Open engineering trace</button><button class="primary-button" type="button" data-action="restart-breadth">Restart authored case</button></div>
     </section>
     ${renderBreadthProvenance()}

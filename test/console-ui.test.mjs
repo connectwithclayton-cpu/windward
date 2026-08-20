@@ -69,6 +69,7 @@ const app = elements.get("#app");
 assert.ok(app);
 
 test("console meter and route map follow live state at the render boundary", () => {
+  assert.doesNotMatch(app.innerHTML, /What this authored case study does not prove/);
   app.click("start");
 
   assert.doesNotMatch(app.innerHTML, /No decisions recorded yet/);
@@ -119,4 +120,8 @@ test("console meter and route map follow live state at the render boundary", () 
   app.click("continue-emergency");
   assert.match(app.innerHTML, /Safety impact: same-day service reduces/);
   assert.match(app.innerHTML, /The \$119 tune-up was deferred/);
+  app.click("open-debrief");
+  assert.match(app.innerHTML, /What this authored case study does not prove/);
+  assert.match(app.innerHTML, /not a faithful production dispatcher/);
+  assert.match(app.innerHTML, /not a backend service, an account system, a persistent product, or a system of record/);
 });

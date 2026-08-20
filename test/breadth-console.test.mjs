@@ -35,6 +35,7 @@ test("Breadth is a third sibling entry with a frozen release-authority briefing"
   assert.match(html, /You decide whether to release that recovery/);
   assert.match(html, /Eight other visits stay pinned in both paths/);
   assert.match(html, /Review the recovery/);
+  assert.doesNotMatch(html, /What this authored case study does not prove/);
 });
 
 test("the Breadth decision exposes two respectable choices and serial engine evidence", () => {
@@ -53,6 +54,13 @@ test("the Breadth decision exposes two respectable choices and serial engine evi
   assert.match(html, /Four serial assignments/);
   assert.equal((html.match(/class="recovery-row /g) ?? []).length, 4);
   assert.equal((html.match(/class="candidate-evidence /g) ?? []).length, 16);
+  assert.match(html, /Focus walk/);
+  assert.match(html, /Replay assignment focus/);
+  assert.equal((html.match(/class="recovery-row walk-step /g) ?? []).length, 4);
+  assert.match(html, /Current assignment · all 4 ranked · Elena Park selected and recorded/);
+  assert.match(html, /1 assignment recorded · current board carried forward · all 4 rechecked · winner changes Elena Park → Marcus Reed/);
+  assert.match(html, /2 assignments recorded · current board carried forward · all 4 rechecked · Nina Flores selected/);
+  assert.match(html, /3 assignments recorded · current board carried forward · all 4 rechecked · Dev Shah selected/);
   assert.match(html, /Elena[\s\S]*first assignment recorded[\s\S]*All 4 rechecked[\s\S]*Marcus/);
   assert.match(html, /Elena Park remains closer\. Marcus Reed becomes the best current choice/);
   assert.match(html, /Marcus Reed[\s\S]*12 min[\s\S]*Elena Park[\s\S]*5 min/);
@@ -63,6 +71,7 @@ test("the Breadth decision exposes two respectable choices and serial engine evi
   assert.match(html, /Absent by design/);
   assert.match(html, /Not in model/);
   assert.match(html, /8 pinned visits · unchanged/);
+  assert.doesNotMatch(html, /What this authored case study does not prove/);
 });
 
 test("both Breadth choices focus a legible receipt and reach respectful outcomes", () => {
@@ -129,6 +138,10 @@ test("both Breadth debriefs use the shared branch ledger and deny machine foresi
   assert.match(releasedHtml, /Approving sound machine work is supervision, not spectatorship/);
   assert.match(releasedHtml, /The dispatcher did not foresee the day/);
   assert.match(releasedHtml, /re-evaluated every technician after each assignment/);
+  assert.match(releasedHtml, /What this authored case study does not prove/);
+  assert.match(releasedHtml, /not a faithful production dispatcher/);
+  assert.match(releasedHtml, /not a real-time system or a model-powered or procedural simulation/);
+  assert.match(releasedHtml, /not a backend service, an account system, a persistent product, or a system of record/);
 
   const alteredBaselineDecision = {
     ...released.comparison.baseline.decisions[0],

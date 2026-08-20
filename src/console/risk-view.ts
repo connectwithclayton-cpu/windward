@@ -16,6 +16,7 @@ import {
   escapeHtml,
   renderDecisionPanel,
   renderEventLog,
+  renderHonestLimits,
   renderStatCell,
 } from "./components.js";
 
@@ -268,6 +269,7 @@ function renderRiskDebrief(state: RiskConsoleState): string {
       ], playerLabel)}
       <div class="causal-summary"><strong>The only branch difference</strong><span>${escapeHtml(summary)}</span></div>
       <blockquote class="risk-verdict">${escapeHtml(verdict)}</blockquote>
+      ${renderHonestLimits("risk-honest-limits-title")}
       <div class="debrief-actions"><button class="secondary-button" type="button" data-action="open-risk-trace">Open engineering trace</button><button class="primary-button" type="button" data-action="restart-risk">Restart fixed case</button></div>
     </section>
     ${renderRiskProvenance()}

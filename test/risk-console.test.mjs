@@ -34,6 +34,7 @@ test("risk decision states both natural-frequency plans and the pre-stated limit
   assert.match(html, /Loss-limit breaches/);
   assert.match(html, /Keep · Direct repair/);
   assert.match(html, /Override · Protect the weekend/);
+  assert.doesNotMatch(html, /What this authored case study does not prove/);
 });
 
 test("protected choice resolves one favourable world before the matched distribution", () => {
@@ -77,6 +78,8 @@ test("both choice branches reach policy debriefs that separate luck from quality
   assert.match(protectedHtml, /Your decision was still sound/);
   assert.match(protectedHtml, /it keeps all 100 replayed worlds inside the stated boundary/);
   assert.match(protectedHtml, /One outcome does not grade a risk decision/);
+  assert.match(protectedHtml, /What this authored case study does not prove/);
+  assert.match(protectedHtml, /not a real-time system or a model-powered or procedural simulation/);
 
   const directDebrief = openRiskDebrief(reachDistribution("direct-repair"));
   const directHtml = renderRiskConsole(directDebrief);
