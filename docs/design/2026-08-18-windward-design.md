@@ -27,8 +27,8 @@ represents any real vendor’s model.
 ## Experience contract
 
 - The viewer is a player, not a spectator.
-- A complete Case 1 session lasts two to three minutes; Case 2 is a separately
-  authored decision-and-replay case.
+- A complete Case 1 session lasts two to three minutes; Cases 2 and 3 are
+  separately authored decision-and-replay cases.
 - The scenario is hand-authored rather than procedural.
 - The experience does not auto-play. It begins only after the player starts it.
 - Each authored case uses one deterministic scenario to support operations,
@@ -40,8 +40,8 @@ represents any real vendor’s model.
 Case 1 has no visible countdown. Its orientation and frozen guided decision are
 manually paced so a cold reviewer can read and experiment without losing the
 scenario; events advance only when the player acts. Pause and restart remain
-available during the shift. Case 2 also has no countdown: its decision is
-frozen, then it shows one fixed world before the full policy replay.
+available during the shift. Cases 2 and 3 also have no countdown: each freezes
+its decision before showing the authored outcome and replay evidence.
 
 ### Case 2: Risk appetite
 
@@ -71,18 +71,44 @@ validation for malformed weights, duplicate or unknown IDs, and branch drift.
 The loss limit is policy evidence after ranking, not an additional ranking
 factor.
 
+### Case 3: Breadth
+
+Breadth is a separate authored static case about a 7:05 AM sick-day recovery.
+Twelve visits were committed across five fictional technicians: eight
+unaffected visits remain pinned and never enter ranking, while four visits from
+the absent technician are dispatched serially by the existing current-board
+dispatcher. After each actual assignment, the dispatcher re-ranks all four
+remaining technicians using the same six factors. It does not evaluate schedule
+combinations, reshuffle committed work, or use promised windows as a ranking
+factor.
+
+The player chooses between two respectable outcomes:
+
+| Choice | Technicians touched | Added drive | Window outcome |
+|---|---:|---:|---|
+| Keep · Release dispatcher recovery | 4 | 43 min | 12 of 12 visits inside |
+| Override · Minimum-touch recovery | 3 | 36 min | 11 of 12 visits inside; diagnostic 13 min late |
+
+The machine branch assigns the four recovered visits to Elena, Marcus, Nina,
+and Dev. Elena wins the first visit. On the second, she remains closer but her
+updated availability and utilisation make Marcus the best current choice. The
+debrief must state that the dispatcher did not foresee the day. Releasing the
+machine recovery is genuine supervision; the case has no overall score and does
+not treat the minimum-touch branch as a mistake.
+
 ## Four reading depths
 
-Horizon serves four audiences in one artifact without placing all four levels of
-detail on the live board at once. Risk appetite uses the same progressive
-disclosure through its plan cards, narrated world, policy replay, and trace.
+Each authored case serves four audiences in one artifact without placing all
+four levels of detail on the live board at once. Risk appetite uses plan cards,
+a narrated world, policy replay, and a trace; Breadth uses the recovery board,
+the pivotal **Why** evidence, branch outcome, and trace.
 
 | Reading depth | Audience need | How Windward serves it |
 |---|---|---|
 | Immediate action | Generalist | The start screen states the role, each decision presents one warning and two explicit actions, and every action produces visible cause and effect. No field-service knowledge is required. |
-| Operational state | Operations | Horizon's five-lane board shows schedule state, qualifications, availability, the heat context, and remaining emergency coverage. Route detail appears only for the selected route decision. |
-| Decision reasoning | AI/product | Horizon's **Why** drawer shows the winner, ranked alternatives, plain-language factor contributions, ineligible options, and immediate counterfactual costs. It also states what the greedy policy omitted. |
-| Reproducible trace | Engineering | After either case, an engineering trace exposes the relevant input snapshot, decision evidence, replay path, and links to the pure-engine source and tests. |
+| Operational state | Operations | Horizon's five-lane board shows schedule state, qualifications, availability, the heat context, and remaining emergency coverage. Breadth shows eight pinned visits, four recovered visits, the absent technician, certifications, and promised-window outcomes. |
+| Decision reasoning | AI/product | Horizon's **Why** drawer shows the winner, ranked alternatives, plain-language factor contributions, ineligible options, and immediate counterfactual costs. Breadth exposes all four current-board rankings and the Elena-to-Marcus turn. |
+| Reproducible trace | Engineering | After any case, an engineering trace exposes the relevant input snapshot, decision evidence, replay path, and links to the pure-engine source and tests. |
 
 The default reading order is immediate action, operational state, decision
 reasoning, then reproducible trace. The generalist and operations bridge is the
@@ -221,6 +247,9 @@ Exactly two operational signals persist throughout play:
 2. the emergency-coverage meter.
 
 No other persistent alert, metric, or status treatment may compete with them.
+For Breadth, the signals are **Recovery** (Jordan out, four visits unassigned,
+eight pinned) and **Release check** (certification and post-ranking promised-
+window result).
 
 ### Decision grammar
 
@@ -241,6 +270,12 @@ Every override changes the relevant state immediately:
 - every override adds a one-line event-log entry.
 
 The player must never have to infer whether an override was recorded.
+
+Breadth presents one batch-level choice in the same grammar: **Keep · Release
+dispatcher recovery** or **Override · Minimum-touch recovery**. The cards show
+their technician-touch, drive-minute, certification, and promised-window
+tradeoffs before the player acts. The receipt, event log, branch ledger, and
+outcome remain visible after either choice.
 
 The decision card is the only surface for deferred-cost explanations. The
 route card describes omitted later minutes and unmodelled future dollars; the
@@ -282,6 +317,11 @@ coverage changing from 1 to 0, decision receipt, delayed ghost arrival, and
 restrained phase entry. Focus and hover feedback is equally restrained. With
 reduced motion enabled, each becomes a direct state change; meaning cannot
 depend on animation. No element continuously pulses, loops, or moves.
+
+Breadth preserves visible retained focus through briefing, decision, receipt,
+outcome, debrief, and trace phases. At narrow widths its 12-visit board becomes
+eight pinned visits plus four focused recovered visits; it must not require
+horizontal scrolling at 320 CSS pixels.
 
 ## Dispatcher and replay contract
 
@@ -337,6 +377,21 @@ the player and baseline runs. If arrival order, durations, travel times, or
 other exogenous data drift, the comparison is invalid and the debrief must not
 claim a causal difference.
 
+### Breadth recovery
+
+Breadth uses the existing dispatcher and replay engine without changing the
+core ranking model. Its `windward-breadth-v1` fixture contains four recovered
+jobs in fixed order, an eight-visit immutable pinned manifest, and four working
+technicians. The machine branch has no overrides; the minimum-touch branch has
+one eligible diagnostic-to-Elena override. Both branches use independent board
+clones, the same exogenous events, and the same pinned manifest.
+
+The first machine assignment records Elena at availability minute 608 and
+228/480 assigned minutes. On the next decision Marcus scores 94.50 and Elena
+89.25 even though Marcus has 12 minutes of travel and Elena has 5. These are
+current-board evidence, not lookahead. Every displayed aggregate is derived
+from decisions, transitions, outcomes, and the validated pinned manifest.
+
 ## Causal debrief
 
 The first ending surface is a branch ledger, not an aggregate score. It replays
@@ -365,6 +420,22 @@ A losing debrief uses the same causality in reverse:
 Revenue, drive time, same-day completion, and customer outcome remain separate
 measures. There is no overall score. A losing player must be able to point to
 the exact decision where the outcome changed.
+
+### Case 3 debrief: Breadth
+
+The Breadth ending is a branch ledger comparing the selected recovery with the
+untouched machine branch. Both branches show zero pinned visits moved and four
+certified recovered visits. Releasing the machine recovery shows 43 added drive
+minutes, four working technicians touched, and 12 of 12 visits inside their
+windows. Minimum-touch shows 36 added drive minutes, three technicians touched,
+and 11 of 12 visits inside their windows because the diagnostic finishes 13
+minutes late.
+
+The causal explanation must make both benefits legible: the machine rechecked
+the current board consistently, while minimum-touch changed one fewer morning
+and saved seven drive minutes. It must also say that the dispatcher did not
+foresee the day. Neither branch is a score, and neither branch is described as
+the only respectable choice.
 
 ## Case 1 validation protocol
 

@@ -44,6 +44,16 @@ import {
   type RiskConsoleState,
 } from "./console/risk-runtime.js";
 import { renderCaseCards, renderRiskConsole } from "./console/risk-view.js";
+import {
+  closeBreadthTrace,
+  continueBreadthOutcome,
+  createInitialBreadthConsoleState,
+  openBreadthDebrief,
+  openBreadthTrace,
+  recordBreadthChoice,
+  startBreadthCase,
+} from "./console/breadth-runtime.js";
+import { renderBreadthConsole } from "./console/breadth-view.js";
 
 const app = requireElement<HTMLElement>("#app");
 const pauseButton = requireElement<HTMLButtonElement>("#pause-button");
@@ -51,15 +61,17 @@ const restartButton = requireElement<HTMLButtonElement>("#restart-button");
 
 let state = createInitialConsoleState();
 let riskState = createInitialRiskConsoleState();
-let selectedCase: "horizon" | "risk" =
-  globalThis.location?.hash === "#risk-appetite" ? "risk" : "horizon";
+let breadthState = createInitialBreadthConsoleState();
+let selectedCase: "horizon" | "risk" | "breadth" = selectCaseFromHash();
 
 function render(): void {
   app.innerHTML = selectedCase === "risk"
     ? renderRiskConsole(riskState)
-    : state.phase === "trace"
-      ? renderTrace(state)
-      : renderConsole(state);
+    : selectedCase === "breadth"
+      ? renderBreadthConsole(breadthState)
+      : state.phase === "trace"
+        ? renderTrace(state)
+        : renderConsole(state);
   updateHeader();
 }
 
@@ -616,7 +628,7 @@ function renderProvenance(): string {
 }
 
 function updateHeader(): void {
-  if (selectedCase === "risk") {
+  if (selectedCase === "risk" || selectedCase === "breadth") {
     pauseButton.disabled = true;
     pauseButton.textContent = "Pause";
     return;
@@ -646,6 +658,20 @@ app.addEventListener("click", (event) => {
     return;
   }
 
+  if (selectedCase === "breadth") {
+    if (action === "start-breadth") breadthState = startBreadthCase(breadthState);
+    if (action === "keep-breadth") breadthState = recordBreadthChoice(breadthState, "dispatcher-recovery");
+    if (action === "minimum-touch-breadth") breadthState = recordBreadthChoice(breadthState, "minimum-touch");
+    if (action === "continue-breadth-outcome") breadthState = continueBreadthOutcome(breadthState);
+    if (action === "open-breadth-debrief") breadthState = openBreadthDebrief(breadthState);
+    if (action === "open-breadth-trace") breadthState = openBreadthTrace(breadthState);
+    if (action === "close-breadth-trace") breadthState = closeBreadthTrace(breadthState);
+    if (action === "restart-breadth") breadthState = createInitialBreadthConsoleState();
+    render();
+    focusCurrent(action);
+    return;
+  }
+
   if (action === "start") state = startShift(state);
   if (action === "keep") state = recordRouteChoice(state, "keep");
   if (action === "override") state = recordRouteChoice(state, "override");
@@ -663,7 +689,7 @@ app.addEventListener("click", (event) => {
 });
 
 pauseButton.addEventListener("click", () => {
-  if (selectedCase === "risk") return;
+  if (selectedCase === "risk" || selectedCase === "breadth") return;
   state = togglePause(state);
   render();
 });
@@ -671,6 +697,8 @@ pauseButton.addEventListener("click", () => {
 restartButton.addEventListener("click", () => {
   if (selectedCase === "risk") {
     riskState = createInitialRiskConsoleState();
+  } else if (selectedCase === "breadth") {
+    breadthState = createInitialBreadthConsoleState();
   } else {
     state = createInitialConsoleState();
   }
@@ -680,7 +708,9 @@ restartButton.addEventListener("click", () => {
 
 function focusCurrent(action: string): void {
   window.requestAnimationFrame(() => {
-    const selector = action === "keep-risk" || action === "protect-risk"
+    const selector = action === "keep-breadth" || action === "minimum-touch-breadth"
+      ? "#breadth-confirmation"
+      : action === "keep-risk" || action === "protect-risk"
       ? "#risk-confirmation"
       : action === "keep" || action === "override" || action === "accept-coverage" || action === "hold-coverage"
       ? "#decision-confirmation"
@@ -692,11 +722,18 @@ function focusCurrent(action: string): void {
 }
 
 window.addEventListener?.("hashchange", () => {
-  selectedCase = globalThis.location?.hash === "#risk-appetite" ? "risk" : "horizon";
+  selectedCase = selectCaseFromHash();
   if (selectedCase === "risk") riskState = createInitialRiskConsoleState();
+  if (selectedCase === "breadth") breadthState = createInitialBreadthConsoleState();
   render();
   focusCurrent("case-change");
 });
+
+function selectCaseFromHash(): "horizon" | "risk" | "breadth" {
+  if (globalThis.location?.hash === "#risk-appetite") return "risk";
+  if (globalThis.location?.hash === "#breadth") return "breadth";
+  return "horizon";
+}
 
 function requireElement<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);

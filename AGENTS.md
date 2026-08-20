@@ -12,9 +12,10 @@ This file is the project's committed home for project-intrinsic agent knowledge:
   ranking or eligibility rules.
 - `.github/workflows/pages.yml` builds and publishes the minimal static artifact
   to `https://connectwithclayton.github.io/windward/` on pushes to `main`.
-- The authored scenario, including its empty-override comparison baseline,
-  lives in `src/console/scenario.ts`; finale outcomes must come from replay
-  evidence rather than parallel UI state.
+- The authored Horizon scenario, including its empty-override comparison
+  baseline, lives in `src/console/scenario.ts`; the separate Breadth fixture
+  and comparison live in `src/breadth.ts` and must likewise derive finale
+  outcomes from replay evidence rather than parallel UI state.
 - Keep coverage descriptive and separate from ranking. The dispatcher's missing
   lookahead and reserve heuristic are intentional product behavior, and a job's
   explicit promised window is replay/outcome data rather than a scoring factor.
@@ -22,6 +23,11 @@ This file is the project's committed home for project-intrinsic agent knowledge:
   in `src/risk.ts`; its console binding lives in `src/console/risk-runtime.ts`
   and `src/console/risk-view.ts`. Keep these separate from `dispatch` and case
   one's replay, and derive every displayed aggregate from engine evidence.
+- Case three's serial current-board recovery lives in `src/breadth.ts`; its
+  console binding lives in `src/console/breadth-runtime.ts` and
+  `src/console/breadth-view.ts`. Keep the eight pinned visits outside ranking,
+  preserve the Elena-to-Marcus state handoff, and keep promised-window results
+  as replay evidence rather than ranking factors.
 
 ## Maintaining this file
 

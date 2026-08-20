@@ -4,17 +4,19 @@ A human-in-the-loop supervision console for simulated AI-dispatched field
 service.
 
 A deliberately myopic simulated dispatcher assigns technicians to jobs. You
-watch the board, see what it chose and what it passed over, and override it when
-it is about to get something wrong.
+watch the board, see what it chose and what it passed over, and decide when its
+evidence is safe to release or needs an override.
 
 Built around a question worth asking: when a system dispatches on its own, what is
 the human actually for?
 
-**Status:** two complete authored supervision cases are implemented. **Horizon**
+**Status:** three complete authored supervision cases are implemented. **Horizon**
 covers the guided route cascade, live coverage tradeoff, no-cool emergency, and
 causal branch-ledger debrief. **Risk appetite** compares a higher-average plan
 with a bounded-downside override, resolves one fixed world, then judges both
-plans across an exact weighted set of 100 matched worlds.
+plans across an exact weighted set of 100 matched worlds. **Breadth** recovers
+four visits from an absent technician one at a time, then asks whether to
+release the current-board recovery or choose the minimum-touch alternative.
 
 ## Supervision console
 
@@ -22,13 +24,17 @@ plans across an exact weighted set of 100 matched worlds.
 
 [Open Case 2 · Risk appetite directly][risk-console].
 
+[Open Case 3 · Breadth directly][breadth-console].
+
 [live-console]: https://connectwithclayton.github.io/windward/
 [risk-console]: https://connectwithclayton.github.io/windward/#risk-appetite
+[breadth-console]: https://connectwithclayton.github.io/windward/#breadth
 
 The dependency-free static client in `index.html` imports the compiled engine and
 console layer from `dist/`. The Horizon case presents the fixed
 five-technician board; Risk appetite presents its separate plan-and-replay
-surface. Both cases use two persistent signals, the shared Keep/Override
+surface; Breadth presents its serial current-board recovery evidence. All cases
+use two persistent signals, the shared Keep/Override
 decision grammar, engine-backed explanations, authored outcome branches, a
 causal comparison with the untouched AI-only baseline, and a separate
 reproducible engineering trace.
@@ -65,7 +71,9 @@ The dependency-free TypeScript package exposes:
   not accept or apply a loss limit;
 - an exact, versioned 100-world risk replay that pairs player and AI-only plans
   against identical outside conditions and computes policy evidence outside
-  ranking.
+  ranking;
+- a fixed Breadth recovery that dispatches four visits serially, retaining each
+  current ranking, state transition, and matched branch outcome as evidence.
 
 Jobs carry an explicit promised time window for replay and late-outcome
 evidence. That window is not a ranking factor. The ranker uses only travel time,
