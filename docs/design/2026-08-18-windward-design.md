@@ -37,10 +37,11 @@ represents any real vendor’s model.
   reasonable choice that is globally bad because it does not look ahead.
 - The ending is a causal debrief, not a score.
 
-Case 1's active shift is 90 seconds. Its orientation, frozen guided decision,
-and debrief sit outside that clock so a cold reviewer can read and experiment
-without losing the scenario. Case 2 has no countdown: its decision is frozen,
-then it shows one fixed world before the full policy replay.
+Case 1 has no visible countdown. Its orientation and frozen guided decision are
+manually paced so a cold reviewer can read and experiment without losing the
+scenario; events advance only when the player acts. Pause and restart remain
+available during the shift. Case 2 also has no countdown: its decision is
+frozen, then it shows one fixed world before the full policy replay.
 
 ### Case 2: Risk appetite
 
@@ -118,8 +119,9 @@ The board is frozen behind a briefing card. The role statement is:
 
 Supporting copy explains that the dispatcher schedules five technicians one
 job at a time, and that the player compares its choice and chooses **Keep** or
-**Override**. The primary action is **Start 90-second shift**. Starting reveals
-the frozen guided event; the clock does not begin until that event is resolved.
+**Override**. The primary action is **Review first decision**. Starting reveals
+the frozen guided event; there is no clock pressure, and the next event appears
+only after that decision is resolved.
 
 ### Event 1: guided route cascade
 
@@ -158,7 +160,7 @@ mistake because certification is a hard engine constraint.
 If the player overrides, the route redraws immediately and a one-line event-log
 entry confirms the action. The scored route remains visually distinct from a
 delayed, ghosted downstream backtrack; the redraw makes the override legible.
-Resolving this event starts the active-shift clock.
+Resolving this event advances to the manually paced active shift.
 
 ### Event 2: live coverage tradeoff
 
@@ -266,18 +268,20 @@ The **Why** drawer distinguishes:
 
 ### Control and accessibility
 
-Pause and restart are always visible during the shift. The guided event has no
-clock pressure or penalty, so trying the control is safe. A required decision
-and its relevant technician must remain in view.
+Pause and restart are always visible during the shift. The case has no
+countdown, and the guided event has no pressure or penalty, so trying the
+controls is safe. A required decision and its relevant technician must remain
+in view.
 
 On narrow viewports, the same information becomes a focused, single-decision
-layout rather than a horizontally scrolling board. The experience does not wait
-until after the timer starts to announce a desktop requirement.
+layout rather than a horizontally scrolling board. The experience does not
+require a desktop viewport.
 
-Motion is short, event-bound feedback only: route redraw, coverage changing
-from 1 to 0, delayed ghost arrival, and restrained phase entry. With reduced
-motion enabled, each becomes a direct state change; meaning cannot depend on
-animation. No element continuously pulses, loops, or moves.
+Motion is short, event-bound feedback only: omission reveal, route redraw,
+coverage changing from 1 to 0, decision receipt, delayed ghost arrival, and
+restrained phase entry. Focus and hover feedback is equally restrained. With
+reduced motion enabled, each becomes a direct state change; meaning cannot
+depend on animation. No element continuously pulses, loops, or moves.
 
 ## Dispatcher and replay contract
 
