@@ -81,6 +81,7 @@ test("both Breadth choices focus a legible receipt and reach respectful outcomes
   const keptOutcomeHtml = renderBreadthConsole(keptOutcome);
   assert.match(keptOutcomeHtml, /Recovery complete — 12 of 12 commitments stayed inside their windows/);
   assert.match(keptOutcomeHtml, /All four recovered visits stayed inside their windows/);
+  assert.match(keptOutcomeHtml, /No pinned visit moved/);
 
   const minimum = recordBreadthChoice(
     startBreadthCase(createInitialBreadthConsoleState()),
@@ -96,6 +97,20 @@ test("both Breadth choices focus a legible receipt and reach respectful outcomes
   assert.match(minimumOutcomeHtml, /Recovery complete — 11 of 12 commitments stayed inside their windows/);
   assert.match(minimumOutcomeHtml, /One fewer technician's morning changed and seven drive minutes were saved/);
   assert.match(minimumOutcomeHtml, /Diagnostic repair[\s\S]*11:43 AM[\s\S]*13 min late/);
+
+  const alteredOutcomeHtml = renderBreadthConsole({
+    ...minimum,
+    phase: "outcome",
+    comparison: {
+      ...minimum.comparison,
+      playerSummary: {
+        ...minimum.comparison.playerSummary,
+        pinnedVisitsMoved: 1,
+      },
+    },
+  });
+  assert.match(alteredOutcomeHtml, /1 pinned visits moved/);
+  assert.doesNotMatch(alteredOutcomeHtml, /No pinned visit moved/);
 });
 
 test("both Breadth debriefs use the shared branch ledger and deny machine foresight", () => {

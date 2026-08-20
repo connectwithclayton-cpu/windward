@@ -15,6 +15,7 @@ export type {
   BreadthCaseDefinition,
   BreadthChoice,
   BreadthComparison,
+  BreadthPinnedManifestReplay,
   BreadthPinnedVisit,
   BreadthRecoverySummary,
 } from "./breadth.js";

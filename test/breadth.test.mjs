@@ -94,13 +94,26 @@ test("Breadth aggregates reconcile from recovery evidence and the eight pinned m
     true,
   );
   assert.deepEqual(
-    summarizeBreadthRecovery(comparison.player, BREADTH_CASE.pinnedVisits),
+    summarizeBreadthRecovery(comparison.player, comparison.pinnedReplay.player),
     comparison.playerSummary,
   );
   assert.deepEqual(
-    summarizeBreadthRecovery(comparison.baseline, BREADTH_CASE.pinnedVisits),
+    summarizeBreadthRecovery(comparison.baseline, comparison.pinnedReplay.baseline),
     comparison.baselineSummary,
   );
+  assert.deepEqual(comparison.pinnedReplay.player.before, BREADTH_CASE.pinnedVisits);
+  assert.deepEqual(comparison.pinnedReplay.player.after, BREADTH_CASE.pinnedVisits);
+  assert.deepEqual(comparison.pinnedReplay.baseline.before, BREADTH_CASE.pinnedVisits);
+  assert.deepEqual(comparison.pinnedReplay.baseline.after, BREADTH_CASE.pinnedVisits);
+  assert.equal(comparison.playerSummary.pinnedVisitsMoved, 0);
+  assert.equal(comparison.baselineSummary.pinnedVisitsMoved, 0);
+  for (const choice of ["dispatcher-recovery", "minimum-touch"]) {
+    const replay = runBreadthComparison(BREADTH_CASE, choice).pinnedReplay;
+    for (const branch of [replay.player, replay.baseline]) {
+      assert.deepEqual(branch.before, BREADTH_CASE.pinnedVisits);
+      assert.deepEqual(branch.after, BREADTH_CASE.pinnedVisits);
+    }
+  }
   const pinnedIds = new Set(BREADTH_CASE.pinnedVisits.map((visit) => visit.id));
   assert.equal(
     comparison.player.decisions.some((decision) => pinnedIds.has(decision.inputSnapshot.job.id)),

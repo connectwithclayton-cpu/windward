@@ -34,6 +34,11 @@ export interface BreadthCaseDefinition {
   readonly pinnedVisits: readonly BreadthPinnedVisit[];
 }
 
+export interface BreadthPinnedManifestReplay {
+  readonly before: readonly BreadthPinnedVisit[];
+  readonly after: readonly BreadthPinnedVisit[];
+}
+
 export interface BreadthRecoverySummary {
   readonly pinnedVisitsMoved: number;
   readonly recoveredVisitsCertified: number;
@@ -49,6 +54,10 @@ export interface BreadthComparison extends BranchComparison {
   readonly caseVersion: BreadthCaseDefinition["version"];
   readonly choice: BreadthChoice;
   readonly pinnedVisits: readonly BreadthPinnedVisit[];
+  readonly pinnedReplay: {
+    readonly player: BreadthPinnedManifestReplay;
+    readonly baseline: BreadthPinnedManifestReplay;
+  };
   readonly playerSummary: BreadthRecoverySummary;
   readonly baselineSummary: BreadthRecoverySummary;
   readonly caseFingerprint: string;
@@ -249,14 +258,19 @@ export function runBreadthComparison(
   const overrides = choice === "minimum-touch" ? BREADTH_MINIMUM_TOUCH_OVERRIDE : [];
   const comparison = runPlayerAndBaseline(definition.scenario, overrides);
   validateBreadthBranches(comparison, choice);
-  const playerSummary = summarizeBreadthRecovery(comparison.player, definition.pinnedVisits);
-  const baselineSummary = summarizeBreadthRecovery(comparison.baseline, definition.pinnedVisits);
+  const pinnedReplay = {
+    player: replayPinnedManifest(definition.pinnedVisits, comparison.player),
+    baseline: replayPinnedManifest(definition.pinnedVisits, comparison.baseline),
+  };
+  const playerSummary = summarizeBreadthRecovery(comparison.player, pinnedReplay.player);
+  const baselineSummary = summarizeBreadthRecovery(comparison.baseline, pinnedReplay.baseline);
   validateSummaries(playerSummary, baselineSummary, choice);
   const output: BreadthComparison = {
     ...comparison,
     caseVersion: definition.version,
     choice,
-    pinnedVisits: clone(definition.pinnedVisits),
+    pinnedVisits: clone(pinnedReplay.player.before),
+    pinnedReplay,
     playerSummary,
     baselineSummary,
     caseFingerprint: CANONICAL_CASE_FINGERPRINT,
@@ -265,7 +279,7 @@ export function runBreadthComparison(
       exogenousFingerprint: comparison.exogenousFingerprint,
       player: comparison.player,
       baseline: comparison.baseline,
-      pinnedVisits: definition.pinnedVisits,
+      pinnedReplay,
     }),
   };
   return deepFreeze(output);
@@ -273,12 +287,17 @@ export function runBreadthComparison(
 
 export function summarizeBreadthRecovery(
   result: SimulationResult,
-  pinnedVisits: readonly BreadthPinnedVisit[],
+  pinnedReplay: BreadthPinnedManifestReplay,
 ): BreadthRecoverySummary {
   if (result.decisions.length !== 4 || result.outcomes.length !== 4) {
     throw new RangeError("Breadth recovery must contain exactly four decisions and outcomes");
   }
-  if (pinnedVisits.length !== 8 || pinnedVisits.some((visit) => visit.status !== "PINNED_UNCHANGED")) {
+  validatePinnedManifestReplay(pinnedReplay);
+  const pinnedVisitsMoved = countPinnedVisitsMoved(pinnedReplay);
+  const pinnedInside = pinnedReplay.before.filter(
+    (visit) => visit.completionMinute <= visit.promisedWindow.endMinute,
+  ).length;
+  if (pinnedReplay.before.length !== 8) {
     throw new RangeError("Breadth summary requires eight immutable pinned visits");
   }
   const selectedCandidates = result.decisions.map((decision, index) => {
@@ -291,12 +310,9 @@ export function summarizeBreadthRecovery(
     }
     return requireEligibleCandidate(decision, outcome.assignedTechnicianId);
   });
-  const pinnedInside = pinnedVisits.filter(
-    (visit) => visit.completionMinute <= visit.promisedWindow.endMinute,
-  ).length;
   const recoveredInside = result.outcomes.filter((outcome) => outcome.lateByMinutes === 0).length;
   return deepFreeze({
-    pinnedVisitsMoved: 0,
+    pinnedVisitsMoved,
     recoveredVisitsCertified: selectedCandidates.filter(
       (candidate) => candidate.factors.certification.value.missing.length === 0,
     ).length,
@@ -420,6 +436,54 @@ function requireEligibleCandidate(
     throw new RangeError(`Breadth selected candidate ${technicianId} is not eligible`);
   }
   return candidate;
+}
+
+function replayPinnedManifest(
+  pinnedVisits: readonly BreadthPinnedVisit[],
+  result: SimulationResult,
+): BreadthPinnedManifestReplay {
+  const pinnedIds = new Set(pinnedVisits.map((visit) => visit.id));
+  for (const transition of result.transitions) {
+    if (pinnedIds.has(transition.eventId)) {
+      throw new RangeError("Pinned visit entered the recovery replay: " + transition.eventId);
+    }
+  }
+  return deepFreeze({
+    before: clone(pinnedVisits),
+    after: clone(pinnedVisits),
+  });
+}
+
+function validatePinnedManifestReplay(
+  pinnedReplay: BreadthPinnedManifestReplay,
+): void {
+  for (const manifest of [pinnedReplay.before, pinnedReplay.after]) {
+    const ids = new Set<string>();
+    for (const visit of manifest) {
+      if (ids.has(visit.id)) {
+        throw new RangeError("duplicate pinned visit id: " + visit.id);
+      }
+      ids.add(visit.id);
+      if (visit.status !== "PINNED_UNCHANGED") {
+        throw new RangeError("pinned visit " + visit.id + " is not immutable");
+      }
+    }
+  }
+}
+
+function countPinnedVisitsMoved(
+  pinnedReplay: BreadthPinnedManifestReplay,
+): number {
+  const beforeById = new Map(pinnedReplay.before.map((visit) => [visit.id, visit]));
+  const afterById = new Map(pinnedReplay.after.map((visit) => [visit.id, visit]));
+  const ids = new Set([...beforeById.keys(), ...afterById.keys()]);
+  let moved = 0;
+  for (const id of ids) {
+    if (stableFingerprint(beforeById.get(id) ?? null) !== stableFingerprint(afterById.get(id) ?? null)) {
+      moved += 1;
+    }
+  }
+  return moved;
 }
 
 function isEligible(candidate: CandidateEvidence): candidate is EligibleCandidateEvidence {
