@@ -49,9 +49,17 @@ export function recordBreadthChoice(
 ): BreadthConsoleState {
   if (state.phase !== "decision" || state.choice !== null) return state;
   const comparison = runBreadthComparison(BREADTH_CASE, choice);
+  const recoveryCount = comparison.player.decisions.length;
+  const flexibleOwner = repeatedAssignmentOwner(BREADTH_MINIMUM_TOUCH_PREVIEW.player);
+  const flexibleName = flexibleOwner === "elena-park" ? "Elena Park" : flexibleOwner;
+  const lateOutcome = BREADTH_MINIMUM_TOUCH_PREVIEW.player.outcomes.find((outcome, index) =>
+    BREADTH_MINIMUM_TOUCH_PREVIEW.player.decisions[index]?.inputSnapshot.job.requiredSkills.includes("diagnostics"));
   const entry = choice === "dispatcher-recovery"
-    ? "7:05 AM · Keep recorded: dispatcher recovery released; four certified owners and four in-window outcomes."
-    : "7:05 AM · Override recorded: flexible visits kept with Elena; three mornings changed, seven drive minutes removed, diagnostic 13 minutes late.";
+    ? "7:05 AM · Keep recorded: dispatcher recovery released; " + comparison.playerSummary.recoveredVisitsCertified + " certified owners and " + comparison.playerSummary.recoveredVisitsInsideWindow + " in-window outcomes."
+    : "7:05 AM · Override recorded: " + recoveryCount + " recovered visits kept with " + flexibleName + "; " +
+      comparison.playerSummary.workingTechniciansTouched + " mornings changed, " +
+      (comparison.baselineSummary.addedTravelMinutes - comparison.playerSummary.addedTravelMinutes) +
+      " drive minutes removed, diagnostic " + (lateOutcome?.lateByMinutes ?? 0) + " minutes late.";
   return update(state, {
     phase: "receipt",
     choice,
@@ -78,6 +86,18 @@ export function openBreadthTrace(state: BreadthConsoleState): BreadthConsoleStat
 export function closeBreadthTrace(state: BreadthConsoleState): BreadthConsoleState {
   if (state.phase !== "trace") return state;
   return update(state, { phase: "debrief" });
+}
+
+function repeatedAssignmentOwner(result: BreadthComparison["player"]): string {
+  const counts = new Map<string, number>();
+  for (const outcome of result.outcomes) {
+    if (outcome.assignedTechnicianId !== null) {
+      counts.set(outcome.assignedTechnicianId, (counts.get(outcome.assignedTechnicianId) ?? 0) + 1);
+    }
+  }
+  const owner = [...counts.entries()].find(([, count]) => count > 1)?.[0];
+  if (owner === undefined) throw new Error("Breadth replay has no flexible assignment owner");
+  return owner;
 }
 
 function update(
