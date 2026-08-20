@@ -75,6 +75,7 @@ assert.ok(app);
 test("console meter and route map follow live state at the render boundary", () => {
   app.click("start");
 
+  assert.doesNotMatch(app.innerHTML, /No decisions recorded yet/);
   assert.match(app.innerHTML, /class="score-window"/);
   assert.match(app.innerHTML, /Future impact/);
   assert.match(app.innerHTML, /Not in model/);
@@ -94,8 +95,12 @@ test("console meter and route map follow live state at the render boundary", () 
   assert.match(app.innerHTML, /id="shift-active-title" tabindex="-1"/);
   assert.doesNotMatch(app.innerHTML, /class="route-map"/);
   app.click("open-coverage");
+  assert.match(app.innerHTML, /<div class="technician-grid">\s*<article[^>]*>[\s\S]*?<h3>Andre Brooks<\/h3>/);
+  const coverageConfirmation = new FakeElement("#decision-confirmation");
+  app.queryResults.set("#decision-confirmation", coverageConfirmation);
   app.click("accept-coverage");
 
+  assert.equal(coverageConfirmation.focusCount, 1);
   assert.match(app.innerHTML, /aria-valuenow="0"/);
   assert.match(app.innerHTML, /Emergency coverage after 2 PM: 0 tech/);
   assert.match(app.innerHTML, /class="signal coverage-signal is-changing"/);
@@ -104,7 +109,7 @@ test("console meter and route map follow live state at the render boundary", () 
 
   app.click("continue-emergency");
   assert.match(app.innerHTML, /Safety impact: residents remain without cooling until tomorrow/);
-  assert.match(app.innerHTML, /class="board-panel"/);
+  assert.match(app.innerHTML, /aria-labelledby="board-title"/);
   assert.match(app.innerHTML, /Five fictional technicians/);
   assert.match(app.innerHTML, /The \+\$119 maintenance job remains scheduled/);
 

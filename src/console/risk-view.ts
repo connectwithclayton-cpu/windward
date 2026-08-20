@@ -12,6 +12,12 @@ import {
   RISK_PLAN_DECISION,
   type RiskConsoleState,
 } from "./risk-runtime.js";
+import {
+  escapeHtml,
+  renderDecisionPanel,
+  renderEventLog,
+  renderStatCell,
+} from "./components.js";
 
 export function renderCaseCards(current: "horizon" | "risk"): string {
   return `<nav class="case-cards" aria-label="Windward cases">
@@ -78,24 +84,29 @@ function renderRiskDecision(state: RiskConsoleState): string {
   const lossLimit = formatUnsignedRiskMoney(RISK_APPETITE_CASE.lossLimitCents);
   return `<main id="main-content" class="risk-shell phase-enter phase-risk-decision">
     ${renderRiskSignals()}
-    <section class="risk-decision-shell" aria-labelledby="risk-decision-title">
-      <header class="decision-header risk-decision-header">
-        <p class="eyebrow">Case 2 · Risk appetite</p>
-        <h1 id="risk-decision-title" tabindex="-1">How should the team cover the weekend?</h1>
-        <span class="frozen-label"><span aria-hidden="true">❚❚</span> Frozen · no countdown</span>
-      </header>
-      <div class="risk-decision-content">
+    ${renderDecisionPanel({
+      titleId: "risk-decision-title",
+      eyebrow: "Case 2 · Risk appetite",
+      title: "How should the team cover the weekend?",
+      className: "risk-decision-shell",
+      contentClassName: "risk-decision-content",
+      badge: {
+        label: "Frozen · no countdown",
+        icon: "❚❚",
+        tone: "quiet",
+        className: "frozen-label",
+      },
+      content: `
         <p class="risk-decision-lede">Both plans start the same repair. The AI chose the plan with the higher average. Your one-job loss limit is <strong>${lossLimit}</strong>.</p>
         <div class="risk-plan-grid">
           ${renderRiskPlanCard("direct-repair", "Dispatcher chose", recorded)}
           ${renderRiskPlanCard("protect-weekend", "Override alternative", recorded)}
         </div>
         ${recorded ? `<div class="recorded risk-recorded" id="risk-confirmation" role="status" tabindex="-1">${receipt}</div>
-          <aside class="event-log risk-event-log" aria-labelledby="risk-event-log-title"><h2 id="risk-event-log-title">Event log</h2><ol aria-live="polite"><li>${escapeHtml(state.eventLog[0] ?? "")}</li></ol></aside>
+          ${renderEventLog({ titleId: "risk-event-log-title", entries: state.eventLog, className: "risk-event-log" })}
           <button class="primary-button wide continue-button" type="button" data-action="continue-risk-world">See one Saturday</button>` : ""}
-        ${renderRiskWhyDrawer()}
-      </div>
-    </section>
+        ${renderRiskWhyDrawer()}`,
+    })}
     ${renderRiskProvenance()}
   </main>`;
 }
@@ -116,12 +127,12 @@ function renderRiskPlanCard(
   return `<article class="risk-plan-card ${planId}" aria-label="${escapeHtml(plan.planName)} plan">
     <span class="choice-rank">${escapeHtml(rankLabel)}</span>
     <h2>${escapeHtml(plan.planName)}</h2>
-    <dl class="risk-plan-facts">
-      <div><dt>${routine.worldCount} of ${cohort.worlds.length} weekends</dt><dd>${escapeHtml(routine.coolingStatus.toLowerCase())} · <strong>${formatRiskMoney(routine.netValueCents)}</strong></dd></div>
-      <div class="disruption-fact"><dt>${disruption.worldCount} of ${cohort.worlds.length} weekends</dt><dd>${escapeHtml(disruption.coolingStatus.toLowerCase())} · <strong>${formatRiskMoney(disruption.netValueCents)}</strong></dd></div>
-      <div><dt>Average across ${cohort.worlds.length}</dt><dd><strong>${formatRiskMoney(cohort.averageNetValueCents)}</strong></dd></div>
-      <div class="breach-fact"><dt>Loss-limit breaches</dt><dd><strong>${cohort.lossLimitBreachCount}</strong><span>${cohort.lossLimitBreachCount} of ${cohort.worlds.length} beyond the ${formatUnsignedRiskMoney(cohort.lossLimitCents)} limit</span></dd></div>
-    </dl>
+    <div class="risk-plan-facts">
+      ${renderStatCell({ label: `${routine.worldCount} of ${cohort.worlds.length} weekends`, value: formatRiskMoney(routine.netValueCents), detail: routine.coolingStatus.toLowerCase() })}
+      ${renderStatCell({ label: `${disruption.worldCount} of ${cohort.worlds.length} weekends`, value: formatRiskMoney(disruption.netValueCents), detail: disruption.coolingStatus.toLowerCase(), tone: "warning", className: "disruption-fact" })}
+      ${renderStatCell({ label: `Average across ${cohort.worlds.length}`, value: formatRiskMoney(cohort.averageNetValueCents) })}
+      ${renderStatCell({ label: "Loss-limit breaches", value: String(cohort.lossLimitBreachCount), detail: `${cohort.lossLimitBreachCount} of ${cohort.worlds.length} beyond the ${formatUnsignedRiskMoney(cohort.lossLimitCents)} limit`, tone: cohort.lossLimitBreachCount === 0 ? "accent" : "danger", className: "breach-fact" })}
+    </div>
     <button class="${planId === "direct-repair" ? "secondary-button" : "primary-button"} wide" type="button" data-action="${action}" ${disabled ? "disabled" : ""}>${button}</button>
   </article>`;
 }
@@ -386,13 +397,4 @@ function valuePosition(minimum: number, maximum: number, value: number): number 
   if (maximum <= minimum) return 50;
   const position = ((value - minimum) / (maximum - minimum)) * 100;
   return Math.round(Math.min(100, Math.max(0, position)) * 100) / 100;
-}
-
-function escapeHtml(value: unknown): string {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
