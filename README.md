@@ -33,11 +33,13 @@ release the current-board recovery or choose the minimum-touch alternative.
 The dependency-free static client in `index.html` imports the compiled engine and
 console layer from `dist/`. The Horizon case presents the fixed
 five-technician board; Risk appetite presents its separate plan-and-replay
-surface; Breadth presents its serial current-board recovery evidence. All cases
-use two persistent signals, the shared Keep/Override
-decision grammar, engine-backed explanations, authored outcome branches, a
-causal comparison with the untouched AI-only baseline, and a separate
-reproducible engineering trace.
+surface; Breadth presents its serial current-board recovery evidence and finite,
+replayable focus walk. All cases use two persistent signals, the shared
+Keep/Override decision grammar, engine-backed explanations, authored outcome
+branches, a causal comparison with the untouched AI-only baseline, and a
+separate reproducible engineering trace. Each case debrief also includes a
+plain-language scope-boundary panel describing what this authored case study
+does not prove.
 
 Risk appetite is a separate static case, not another event in the Horizon
 shift. Its `15 of 100` likelihood, `$15,000` one-job loss limit, plans, outcomes,
