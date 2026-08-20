@@ -101,21 +101,20 @@ test("both Breadth choices focus a legible receipt and reach respectful outcomes
   const alteredPinnedAfter = minimum.comparison.player.pinnedVisitsAfter.map((visit, index) =>
     index === 0 ? { ...visit, ownerId: "marcus-reed", completionMinute: 520 } : visit,
   );
-  const alteredOutcomeHtml = renderBreadthConsole({
-    ...minimum,
-    phase: "outcome",
-    comparison: {
-      ...minimum.comparison,
-      player: {
-        ...minimum.comparison.player,
-        pinnedVisitsAfter: alteredPinnedAfter,
+  assert.throws(
+    () => renderBreadthConsole({
+      ...minimum,
+      phase: "outcome",
+      comparison: {
+        ...minimum.comparison,
+        player: {
+          ...minimum.comparison.player,
+          pinnedVisitsAfter: alteredPinnedAfter,
+        },
       },
-    },
-  });
-  assert.match(alteredOutcomeHtml, /1 pinned visits moved/);
-  assert.match(alteredOutcomeHtml, /8 pinned visits · changed/);
-  assert.match(alteredOutcomeHtml, /outside window/);
-  assert.doesNotMatch(alteredOutcomeHtml, /No pinned visit moved/);
+    }),
+    /Breadth after pinned manifests diverged/,
+  );
 });
 
 test("both Breadth debriefs use the shared branch ledger and deny machine foresight", () => {
@@ -165,6 +164,30 @@ test("both Breadth debriefs use the shared branch ledger and deny machine foresi
   assert.match(alteredReceiptHtml, /does not support a complete re-evaluation claim/);
   assert.match(alteredReceiptHtml, /Recheck evidence incomplete/);
   assert.doesNotMatch(alteredReceiptHtml, /rank all 4 remaining technicians again/);
+  const firstTransition = released.comparison.baseline.transitions[0];
+  const firstTechnician = firstTransition.afterBoard.technicians[0];
+  const brokenHandoff = {
+    ...firstTransition,
+    afterBoard: {
+      ...firstTransition.afterBoard,
+      technicians: [
+        { ...firstTechnician, assignedMinutes: firstTechnician.assignedMinutes + 1 },
+        ...firstTransition.afterBoard.technicians.slice(1),
+      ],
+    },
+  };
+  const brokenHandoffHtml = renderBreadthConsole({
+    ...released,
+    comparison: {
+      ...alteredComparison,
+      baseline: {
+        ...alteredComparison.baseline,
+        transitions: [brokenHandoff, ...alteredComparison.baseline.transitions.slice(1)],
+      },
+    },
+  });
+  assert.match(brokenHandoffHtml, /candidate-field sizes did not support a complete re-evaluation claim/);
+  assert.doesNotMatch(brokenHandoffHtml, /re-evaluated every technician after each assignment —/);
 
   const minimum = reachDebrief("minimum-touch");
   const minimumHtml = renderBreadthConsole(minimum);

@@ -426,6 +426,24 @@ function requirePinnedVisits(
   }
   validatePinnedVisits(result.pinnedVisitsBefore);
   validatePinnedVisits(result.pinnedVisitsAfter);
+  let expectedBefore = result.pinnedVisitsBefore;
+  for (const transition of result.transitions) {
+    if (transition.pinnedVisitsBefore === undefined || transition.pinnedVisitsAfter === undefined) {
+      throw new RangeError("Breadth replay transition must expose pinned manifests");
+    }
+    validatePinnedVisits(transition.pinnedVisitsBefore);
+    validatePinnedVisits(transition.pinnedVisitsAfter);
+    if (!samePinnedManifest(expectedBefore, transition.pinnedVisitsBefore)) {
+      throw new RangeError("Breadth pinned transition before-state drifted");
+    }
+    expectedBefore = transition.pinnedVisitsAfter;
+  }
+  const expectedAfter = result.transitions.length === 0
+    ? result.pinnedVisitsBefore
+    : expectedBefore;
+  if (!samePinnedManifest(expectedAfter, result.pinnedVisitsAfter)) {
+    throw new RangeError("Breadth pinned transition after-state drifted");
+  }
   return {
     before: result.pinnedVisitsBefore,
     after: result.pinnedVisitsAfter,
@@ -441,6 +459,24 @@ function validatePinnedVisits(visits: readonly BreadthPinnedVisit[]): void {
       throw new RangeError("pinned visit " + visit.id + " is not immutable");
     }
   }
+}
+
+function samePinnedManifest(
+  left: readonly BreadthPinnedVisit[],
+  right: readonly BreadthPinnedVisit[],
+): boolean {
+  if (left.length !== right.length) return false;
+  const rightById = new Map(right.map((visit) => [visit.id, visit]));
+  return left.every((visit) => {
+    const other = rightById.get(visit.id);
+    return other !== undefined &&
+      visit.name === other.name &&
+      visit.ownerId === other.ownerId &&
+      visit.promisedWindow.startMinute === other.promisedWindow.startMinute &&
+      visit.promisedWindow.endMinute === other.promisedWindow.endMinute &&
+      visit.completionMinute === other.completionMinute &&
+      visit.status === other.status;
+  });
 }
 
 function countPinnedVisitsMoved(

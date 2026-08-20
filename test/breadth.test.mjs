@@ -112,16 +112,39 @@ test("Breadth aggregates reconcile from recovery evidence and the eight pinned m
     for (const branch of [replay.player, replay.baseline]) {
       assert.deepEqual(branch.pinnedVisitsBefore, BREADTH_CASE.pinnedVisits);
       assert.deepEqual(branch.pinnedVisitsAfter, BREADTH_CASE.pinnedVisits);
+      assert.equal(branch.transitions.length, 4);
+      for (const [index, transition] of branch.transitions.entries()) {
+        assert.deepEqual(transition.pinnedVisitsBefore, BREADTH_CASE.pinnedVisits);
+        assert.deepEqual(transition.pinnedVisitsAfter, BREADTH_CASE.pinnedVisits);
+        if (index > 0) {
+          assert.deepEqual(
+            transition.pinnedVisitsBefore,
+            branch.transitions[index - 1].pinnedVisitsAfter,
+          );
+        }
+      }
+      assert.deepEqual(
+        branch.pinnedVisitsAfter,
+        branch.transitions.at(-1).pinnedVisitsAfter,
+      );
     }
   }
-  const changedAfter = clone(comparison.player.pinnedVisitsAfter);
-  changedAfter[0].ownerId = "marcus-reed";
-  assert.equal(
-    summarizeBreadthRecovery({
+  const changedTransition = {
+    ...comparison.player.transitions[0],
+    pinnedVisitsAfter: [
+      {
+        ...comparison.player.transitions[0].pinnedVisitsAfter[0],
+        ownerId: "marcus-reed",
+      },
+      ...comparison.player.transitions[0].pinnedVisitsAfter.slice(1),
+    ],
+  };
+  assert.throws(
+    () => summarizeBreadthRecovery({
       ...comparison.player,
-      pinnedVisitsAfter: changedAfter,
-    }).pinnedVisitsMoved,
-    1,
+      transitions: [changedTransition, ...comparison.player.transitions.slice(1)],
+    }),
+    /Breadth pinned transition (before|after)-state drifted/,
   );
   const pinnedIds = new Set(BREADTH_CASE.pinnedVisits.map((visit) => visit.id));
   assert.equal(

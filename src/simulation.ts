@@ -102,6 +102,8 @@ export interface SimulationTransition {
   readonly beforeBoard: BoardState;
   readonly afterBoard: BoardState;
   readonly outcome: SimulationOutcome;
+  readonly pinnedVisitsBefore?: readonly PinnedVisitState[];
+  readonly pinnedVisitsAfter?: readonly PinnedVisitState[];
 }
 
 export interface SimulationResult {
@@ -274,7 +276,7 @@ function simulateEvents(
 
   let board = clone(initialBoard);
   const pinnedVisitsBefore = pinnedVisits === undefined ? undefined : clone(pinnedVisits);
-  let pinnedVisitsAfter = pinnedVisitsBefore === undefined ? undefined : clone(pinnedVisitsBefore);
+  let pinnedVisitsState = pinnedVisitsBefore === undefined ? undefined : clone(pinnedVisitsBefore);
   const pinnedVisitList = pinnedVisitsBefore ?? [];
   const pinnedIds = new Set(pinnedVisitList.map((visit) => visit.id));
   if (pinnedIds.size !== pinnedVisitList.length) {
@@ -290,8 +292,19 @@ function simulateEvents(
   const transitions: SimulationTransition[] = [];
 
   for (const event of exogenousEvents) {
-    pinnedVisitsAfter = advancePinnedVisits(pinnedVisitsAfter, event.eventId, pinnedIds);
     const beforeBoard = clone(board);
+    const beforePinnedVisits = pinnedVisitsState === undefined ? undefined : clone(pinnedVisitsState);
+    let pinnedTransition: Pick<SimulationTransition, "pinnedVisitsBefore" | "pinnedVisitsAfter"> = {};
+    if (beforePinnedVisits === undefined) {
+      pinnedVisitsState = undefined;
+    } else {
+      const afterPinnedVisits = advancePinnedVisits(beforePinnedVisits, event.eventId, pinnedIds);
+      pinnedVisitsState = clone(afterPinnedVisits);
+      pinnedTransition = {
+        pinnedVisitsBefore: beforePinnedVisits,
+        pinnedVisitsAfter: afterPinnedVisits,
+      };
+    }
     const decision = dispatch(board, event.job);
     const override = overrideByEvent.get(event.eventId);
     if (override?.type === "DECLINE") {
@@ -315,6 +328,7 @@ function simulateEvents(
         beforeBoard,
         afterBoard: clone(board),
         outcome,
+        ...pinnedTransition,
       });
       continue;
     }
@@ -355,9 +369,16 @@ function simulateEvents(
       beforeBoard,
       afterBoard: clone(board),
       outcome,
+      ...pinnedTransition,
     });
   }
 
+  const lastTransition = transitions[transitions.length - 1];
+  const pinnedVisitsAfter = pinnedVisitsBefore === undefined
+    ? undefined
+    : lastTransition?.pinnedVisitsAfter === undefined
+      ? clone(pinnedVisitsBefore)
+      : clone(lastTransition.pinnedVisitsAfter);
   const pinnedManifest = pinnedVisitsBefore === undefined || pinnedVisitsAfter === undefined
     ? {}
     : { pinnedVisitsBefore, pinnedVisitsAfter };
@@ -372,6 +393,16 @@ function simulateEvents(
   });
 }
 
+function advancePinnedVisits(
+  pinnedVisits: readonly PinnedVisitState[],
+  eventId: string,
+  pinnedIds: ReadonlySet<string>,
+): readonly PinnedVisitState[];
+function advancePinnedVisits(
+  pinnedVisits: undefined,
+  eventId: string,
+  pinnedIds: ReadonlySet<string>,
+): undefined;
 function advancePinnedVisits(
   pinnedVisits: readonly PinnedVisitState[] | undefined,
   eventId: string,
