@@ -1,6 +1,7 @@
 # Case 3 focus walk and honest limits evidence
 
-**Date:** 2026-08-20  
+**Date:** 2026-08-20
+
 **Surface:** local static build served from `http://127.0.0.1:4173/`
 
 ## Observations
