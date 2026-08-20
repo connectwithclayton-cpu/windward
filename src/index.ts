@@ -4,6 +4,20 @@ export type {
   CoverageEvidence,
   CoverageRequirement,
 } from "./coverage.js";
+export {
+  BREADTH_CASE,
+  BREADTH_MINIMUM_TOUCH_OVERRIDE,
+  runBreadthComparison,
+  summarizeBreadthRecovery,
+  validateBreadthCaseDefinition,
+} from "./breadth.js";
+export type {
+  BreadthCaseDefinition,
+  BreadthChoice,
+  BreadthComparison,
+  BreadthPinnedVisit,
+  BreadthRecoverySummary,
+} from "./breadth.js";
 export { dispatch, NoEligibleCandidateError } from "./dispatch.js";
 export {
   generateExogenousEvents,

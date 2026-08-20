@@ -19,7 +19,7 @@ import {
   renderStatCell,
 } from "./components.js";
 
-export function renderCaseCards(current: "horizon" | "risk"): string {
+export function renderCaseCards(current: "horizon" | "risk" | "breadth"): string {
   return `<nav class="case-cards" aria-label="Windward cases">
     <a class="case-card ${current === "horizon" ? "is-current" : ""}" href="./" ${current === "horizon" ? 'aria-current="page"' : ""}>
       <span>Case 1 · Horizon</span>
@@ -28,6 +28,10 @@ export function renderCaseCards(current: "horizon" | "risk"): string {
     <a class="case-card ${current === "risk" ? "is-current" : ""}" href="#risk-appetite" ${current === "risk" ? 'aria-current="page"' : ""}>
       <span>Case 2 · Risk appetite</span>
       <strong>Decide how much downside the business can carry.</strong>
+    </a>
+    <a class="case-card ${current === "breadth" ? "is-current" : ""}" href="#breadth" ${current === "breadth" ? 'aria-current="page"' : ""}>
+      <span>Case 3 · Breadth</span>
+      <strong>Decide whether a routine recovery is safe to release.</strong>
     </a>
   </nav>`;
 }
