@@ -421,7 +421,7 @@ Revenue, drive time, same-day completion, and customer outcome remain separate
 measures. There is no overall score. A losing player must be able to point to
 the exact decision where the outcome changed.
 
-### Case 3: Breadth
+### Case 3 debrief: Breadth
 
 The Breadth ending is a branch ledger comparing the selected recovery with the
 untouched machine branch. Both branches show zero pinned visits moved and four
