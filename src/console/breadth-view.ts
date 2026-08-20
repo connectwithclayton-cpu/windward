@@ -185,7 +185,7 @@ function renderBreadthDecision(state: BreadthConsoleState): string {
         ${comparison === null ? "" : `<div class="recorded breadth-recorded" id="breadth-confirmation" role="status" tabindex="-1">${confirmation}</div>
           ${renderEventLog({ titleId: "breadth-event-log-title", entries: state.eventLog, className: "breadth-event-log" })}
           <button class="primary-button wide continue-button" type="button" data-action="continue-breadth-outcome">Continue through recovered work</button>`}
-        ${renderRecoveryMatrix(BREADTH_MACHINE_PREVIEW.baseline, BREADTH_MINIMUM_TOUCH_PREVIEW.player)}
+        ${renderRecoveryMatrix(comparison?.baseline ?? BREADTH_MACHINE_PREVIEW.baseline, comparison?.player ?? BREADTH_MINIMUM_TOUCH_PREVIEW.player)}
       `,
     })}
     ${renderBreadthBoard(state)}
@@ -226,13 +226,16 @@ function renderChoiceCards(disabled: boolean): string {
 }
 
 function renderRecoveryMatrix(result: SimulationResult, alternative: SimulationResult): string {
+  const replayFacts = replayCardinality(result);
   const candidateRows = result.decisions.reduce((total, decision) => total + decision.ranking.length, 0);
-  const candidateCount = result.decisions[0]?.ranking.length ?? 0;
+  const matrixIntro = replayFacts.recheckedEveryDecision
+    ? `Each visit became current in this order. After every actual assignment, the dispatcher used the updated availability and assigned work to rank all ${replayFacts.technicianFieldSize} remaining technicians again across ${replayFacts.assignmentCount} assignments.`
+    : `Each visit became current in this order. Replay evidence exposes ${replayFacts.technicianFieldSize} technician candidates for ${replayFacts.assignmentCount} assignments, but does not support a complete re-evaluation claim.`;
   return `<section class="breadth-matrix" aria-labelledby="breadth-matrix-title">
     <div class="section-heading"><div><p class="eyebrow">Recovery matrix · engine evidence</p><h2 id="breadth-matrix-title">${capitalizeNumberWord(result.decisions.length)} serial assignments</h2></div><span class="board-note">${candidateRows} candidate rows · same ${FACTOR_ORDER.length} factors</span></div>
-    <p class="matrix-intro">Each visit became current in this order. After every actual assignment, the dispatcher used the updated availability and assigned work to rank all ${candidateCount} remaining technicians again.</p>
+    <p class="matrix-intro">${matrixIntro}</p>
     <div class="recovery-rows">
-      ${result.decisions.map((decision, index) => renderRecoveryRow(decision, result, alternative, index, findPivotalIndex(result))).join("")}
+      ${result.decisions.map((decision, index) => renderRecoveryRow(decision, result, alternative, index, findPivotalIndex(result), replayFacts)).join("")}
     </div>
   </section>`;
 }
@@ -243,6 +246,7 @@ function renderRecoveryRow(
   alternative: SimulationResult,
   index: number,
   pivotalIndex: number,
+  replayFacts: ReplayCardinality,
 ): string {
   const outcome = result.outcomes[index];
   if (outcome === undefined) throw new Error(`Missing Breadth outcome ${index + 1}`);
@@ -254,7 +258,7 @@ function renderRecoveryRow(
     : `${outcome.lateByMinutes} min late`;
   const previousAssignedId = result.outcomes[index - 1]?.assignedTechnicianId;
   const turn = pivotal && previousAssignedId !== null && previousAssignedId !== undefined
-    ? `<span class="breadth-turn"><strong>${escapeHtml(NAMES[previousAssignedId] ?? previousAssignedId)}</strong><i aria-hidden="true">→</i><span>${index === 1 ? "first assignment recorded" : "assignment " + index + " recorded"}</span><i aria-hidden="true">→</i><strong>All ${decision.ranking.length} rechecked</strong><i aria-hidden="true">→</i><strong>${escapeHtml(NAMES[decision.winner.technicianId] ?? decision.winner.technicianId)}</strong></span>`
+    ? `<span class="breadth-turn"><strong>${escapeHtml(NAMES[previousAssignedId] ?? previousAssignedId)}</strong><i aria-hidden="true">→</i><span>${index === 1 ? "first assignment recorded" : "assignment " + index + " recorded"}</span><i aria-hidden="true">→</i><strong>${replayFacts.recheckedEveryDecision ? `All ${replayFacts.technicianFieldSize} rechecked` : "Recheck evidence incomplete"}</strong><i aria-hidden="true">→</i><strong>${escapeHtml(NAMES[decision.winner.technicianId] ?? decision.winner.technicianId)}</strong></span>`
     : "";
   return `<details class="recovery-row ${pivotal ? "is-pivotal" : ""}">
     <summary>
@@ -521,9 +525,13 @@ function renderBreadthDebrief(state: BreadthConsoleState): string {
   const machineInside = pivotalOutcome.completionMinute === null ? 0 : pivotalOutcome.promisedWindow.endMinute - pivotalOutcome.completionMinute;
   const finalTeaching = released
     ? `The machine kept ${baseline.recoveredVisitsInsideWindow} of ${recoveryCount} recovered visits inside their windows under the same rules. You supplied release authority. Approving sound machine work is supervision, not spectatorship.`
-    : `Your alternative achieved its stated goal. The cost was ${lateCount} late commitment${pluralSuffix(lateCount)}. The machine did not foresee that result; it consistently re-ranked the current board and selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} on the pivotal row.`;
+    : replayFacts.recheckedEveryDecision
+      ? `Your alternative achieved its stated goal. The cost was ${lateCount} late commitment${pluralSuffix(lateCount)}. The machine did not foresee that result; it consistently re-ranked the current board across ${replayFacts.assignmentCount} assignments with ${replayFacts.technicianFieldSize} candidates per decision and selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} on the pivotal row.`
+      : `Your alternative achieved its stated goal. The cost was ${lateCount} late commitment${pluralSuffix(lateCount)}. The machine did not foresee that result; the replay does not support a complete current-board re-ranking claim, so it selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} on the pivotal row.`;
   const causal = released
-    ? `At recovered visit ${pivotalIndex + 1}, the dispatcher selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} even though ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId} was ${pivotalCandidate.factors.travelTime.value.minutes - priorCandidate.factors.travelTime.value.minutes} minutes closer. ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId}'s first recovery changed the current wait to ${priorCandidate.factors.availability.value.waitMinutes} minutes and assigned load to ${priorCandidate.factors.utilisation.value.assignedMinutes}/${priorCandidate.factors.utilisation.value.capacityMinutes}. Rechecking ${pivotalDecision.ranking.length} technicians kept the diagnostic visit ${machineInside} minutes inside its window. The dispatcher did not predict a future job; it used the current board in front of it.`
+    ? replayFacts.recheckedEveryDecision
+      ? `At recovered visit ${pivotalIndex + 1}, the dispatcher selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} even though ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId} was ${pivotalCandidate.factors.travelTime.value.minutes - priorCandidate.factors.travelTime.value.minutes} minutes closer. ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId}'s first recovery changed the current wait to ${priorCandidate.factors.availability.value.waitMinutes} minutes and assigned load to ${priorCandidate.factors.utilisation.value.assignedMinutes}/${priorCandidate.factors.utilisation.value.capacityMinutes}. Rechecking ${replayFacts.technicianFieldSize} technicians kept the diagnostic visit ${machineInside} minutes inside its window. The dispatcher did not predict a future job; it used the current board in front of it.`
+      : `At recovered visit ${pivotalIndex + 1}, the dispatcher selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} even though ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId} was ${pivotalCandidate.factors.travelTime.value.minutes - priorCandidate.factors.travelTime.value.minutes} minutes closer. ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId}'s first recovery changed the current wait to ${priorCandidate.factors.availability.value.waitMinutes} minutes and assigned load to ${priorCandidate.factors.utilisation.value.assignedMinutes}/${priorCandidate.factors.utilisation.value.capacityMinutes}. The replay does not validate a complete technician recheck; the diagnostic visit completed ${machineInside} minutes inside its window. The dispatcher did not predict a future job; it used the current board in front of it.`
     : `At recovered visit ${pivotalIndex + 1}, you kept the diagnostic with ${minimumTechnicianName}. That saved ${travelSaved} drive minutes; ${untouchedTechnicianName} received no recovered assignment in this branch. ${minimumTechnicianName} had ${minimumPivotalCandidate.factors.availability.value.waitMinutes} minutes of current wait, so the diagnostic completed at ${formatClockMinute(minimumPivotalOutcome.completionMinute ?? 0)} — ${minimumPivotalOutcome.lateByMinutes} minutes outside its promised window. ${comparison.playerSummary.recoveredVisitsCertified} of ${recoveryCount} recovered visits met certification. No certification rule was broken and ${pinnedMovementClaim(pinnedEvidence.player.moved, false)}.`;
   return `<main id="main-content" class="breadth-shell phase-enter phase-breadth-debrief">
     <section class="debrief-panel breadth-debrief-panel" aria-labelledby="breadth-debrief-title">
@@ -694,15 +702,36 @@ interface ReplayCardinality {
 
 function replayCardinality(result: SimulationResult): ReplayCardinality {
   const assignmentCount = result.decisions.length;
-  const technicianFieldSizes = result.decisions.map((decision) => decision.ranking.length);
-  const technicianFieldSize = technicianFieldSizes[0] ?? 0;
+  const technicianFieldSize = result.decisions[0]?.inputSnapshot.boardState.technicians.length ?? 0;
+  let recheckedEveryDecision = assignmentCount > 0 &&
+    assignmentCount === result.outcomes.length &&
+    assignmentCount === result.transitions.length;
+  for (const [index, decision] of result.decisions.entries()) {
+    const outcome = result.outcomes[index];
+    const transition = result.transitions[index];
+    const boardTechnicianIds = decision.inputSnapshot.boardState.technicians.map((technician) => technician.id);
+    const rankedTechnicianIds = decision.ranking.map((candidate) => candidate.technicianId);
+    const boardIds = new Set(boardTechnicianIds);
+    const rankedIds = new Set(rankedTechnicianIds);
+    const sequenceAligned = outcome !== undefined &&
+      transition !== undefined &&
+      decision.inputSnapshot.job.id === outcome.eventId &&
+      decision.inputSnapshot.job.id === transition.eventId &&
+      decision.decisionId === outcome.decisionId &&
+      decision.decisionId === transition.decisionId &&
+      transition.outcome.eventId === outcome.eventId &&
+      transition.outcome.decisionId === outcome.decisionId;
+    const completeCandidateField = boardIds.size === boardTechnicianIds.length &&
+      rankedIds.size === rankedTechnicianIds.length &&
+      boardIds.size === technicianFieldSize &&
+      boardIds.size === rankedIds.size &&
+      [...boardIds].every((technicianId) => rankedIds.has(technicianId));
+    recheckedEveryDecision = recheckedEveryDecision && sequenceAligned && completeCandidateField;
+  }
   return {
     assignmentCount,
     technicianFieldSize,
-    recheckedEveryDecision: assignmentCount > 0 &&
-      assignmentCount === result.outcomes.length &&
-      assignmentCount === result.transitions.length &&
-      technicianFieldSizes.every((size) => size === technicianFieldSize),
+    recheckedEveryDecision,
   };
 }
 

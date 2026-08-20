@@ -134,25 +134,37 @@ test("both Breadth debriefs use the shared branch ledger and deny machine foresi
   const alteredBaselineDecision = {
     ...released.comparison.baseline.decisions[0],
     ranking: [
-      ...released.comparison.baseline.decisions[0].ranking,
-      released.comparison.baseline.decisions[0].ranking[0],
+      ...released.comparison.baseline.decisions[0].ranking.slice(0, -1),
+      {
+        ...released.comparison.baseline.decisions[0].ranking.at(-1),
+        technicianId: "ghost-technician",
+      },
     ],
+  };
+  const alteredComparison = {
+    ...released.comparison,
+    baseline: {
+      ...released.comparison.baseline,
+      decisions: [
+        alteredBaselineDecision,
+        ...released.comparison.baseline.decisions.slice(1),
+      ],
+    },
   };
   const alteredDebriefHtml = renderBreadthConsole({
     ...released,
-    comparison: {
-      ...released.comparison,
-      baseline: {
-        ...released.comparison.baseline,
-        decisions: [
-          alteredBaselineDecision,
-          ...released.comparison.baseline.decisions.slice(1),
-        ],
-      },
-    },
+    comparison: alteredComparison,
   });
   assert.match(alteredDebriefHtml, /candidate-field sizes did not support a complete re-evaluation claim/);
   assert.doesNotMatch(alteredDebriefHtml, /re-evaluated every technician after each assignment —/);
+  const alteredReceiptHtml = renderBreadthConsole({
+    ...released,
+    phase: "receipt",
+    comparison: alteredComparison,
+  });
+  assert.match(alteredReceiptHtml, /does not support a complete re-evaluation claim/);
+  assert.match(alteredReceiptHtml, /Recheck evidence incomplete/);
+  assert.doesNotMatch(alteredReceiptHtml, /rank all 4 remaining technicians again/);
 
   const minimum = reachDebrief("minimum-touch");
   const minimumHtml = renderBreadthConsole(minimum);
@@ -160,6 +172,15 @@ test("both Breadth debriefs use the shared branch ledger and deny machine foresi
   assert.match(minimumHtml, /Your alternative achieved its stated goal/);
   assert.match(minimumHtml, /No certification rule was broken and no pinned visit moved/);
   assert.match(minimumHtml, /The cost was one late commitment/);
+  const alteredMinimumDebriefHtml = renderBreadthConsole({
+    ...minimum,
+    comparison: {
+      ...minimum.comparison,
+      baseline: alteredComparison.baseline,
+    },
+  });
+  assert.match(alteredMinimumDebriefHtml, /replay does not support a complete current-board re-ranking claim/);
+  assert.doesNotMatch(alteredMinimumDebriefHtml, /consistently re-ranked the current board/);
 
   const allCopy = `${releasedHtml}\n${minimumHtml}`;
   assert.doesNotMatch(allCopy, /schedule combinations|reshuffles? .*day|globally optim|human instinct|humans? usually choose|machine protects promised windows/i);
