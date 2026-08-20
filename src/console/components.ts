@@ -93,6 +93,19 @@ export function renderEventLog(view: EventLogView): string {
   </aside>`;
 }
 
+export function renderHonestLimits(titleId: string): string {
+  return `<aside class="honest-limits" aria-labelledby="${escapeHtml(titleId)}">
+    <p class="eyebrow">Scope boundary</p>
+    <h2 id="${escapeHtml(titleId)}">What this authored case study does not prove</h2>
+    <p class="honest-limits-lede">Windward uses a deliberately myopic simulated dispatcher. It does not show how any real vendor's model behaves, and it is not a faithful production dispatcher or a claim about the full complexity of field-service operations.</p>
+    <dl>
+      <div><dt>Simulation limits</dt><dd>It is not a real-time system or a model-powered or procedural simulation.</dd></div>
+      <div><dt>Product limits</dt><dd>It is not a backend service, an account system, a persistent product, or a system of record.</dd></div>
+      <div><dt>What is actually here</dt><dd>The deployable product is a static client that consumes the pure engine package. It has no backend, accounts, database, or persistence. This zero-infrastructure architecture is intentional.</dd></div>
+    </dl>
+  </aside>`;
+}
+
 export function escapeHtml(value: unknown): string {
   return String(value)
     .replaceAll("&", "&amp;")

@@ -30,7 +30,9 @@ represents any real vendor’s model.
 - A complete Case 1 session lasts two to three minutes; Cases 2 and 3 are
   separately authored decision-and-replay cases.
 - The scenario is hand-authored rather than procedural.
-- The experience does not auto-play. It begins only after the player starts it.
+- The experience does not auto-start. It begins only after the player starts it.
+  After Case 3 starts, its finite focus walk may auto-play over already-visible
+  replay evidence; it never gates access to information.
 - Each authored case uses one deterministic scenario to support operations,
   AI/product, engineering, and generalist readers through progressive disclosure.
 - Every scored Horizon mistake has one cause: the dispatcher makes a locally
@@ -95,6 +97,14 @@ updated availability and utilisation make Marcus the best current choice. The
 debrief must state that the dispatcher did not foresee the day. Releasing the
 machine recovery is genuine supervision; the case has no overall score and does
 not treat the minimum-touch branch as a mistake.
+
+The recovery matrix presents the four serial assignments as a finite focus walk
+in recorded order. All rows, candidate evidence, and carry-forward state remain
+available while the walk plays. The second assignment receives a longer
+emphasis so the Elena-to-Marcus change is legible. The walk can be replayed
+without moving keyboard focus. With `prefers-reduced-motion: reduce`, the walk
+is a static, fully legible presentation with no replay control; the turn and
+recorded state must remain understandable without movement.
 
 ## Four reading depths
 
@@ -282,6 +292,15 @@ route card describes omitted later minutes and unmodelled future dollars; the
 coverage card describes the coverage loss and leaves future emergency minutes
 and dollars absent. Neither downstream evidence, coverage, reserve capacity,
 promised windows, or any other forward-looking term becomes a ranking factor.
+
+Every case debrief includes a post-run **Scope boundary** panel near the debrief
+actions. It uses the plain-language limits in [Scope boundaries](#scope-boundaries):
+Windward is an authored case study with a deliberately myopic simulated
+dispatcher, not a faithful production dispatcher and not evidence of how any
+real vendor’s model behaves. The panel also states that Windward is not
+real-time, model-powered or procedural, a backend service, an account system, a
+persistent product, or a system of record. This panel is explanatory and does
+not add a persistent operational signal.
 
 ### Explanation language
 
