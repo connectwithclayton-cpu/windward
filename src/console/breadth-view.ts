@@ -121,7 +121,7 @@ function renderBreadthBriefing(): string {
       <h1 id="breadth-briefing-title" tabindex="-1">You supervise a dispatch recovery.</h1>
       ${renderCaseCards("breadth")}
       <p class="briefing-copy">${absentCount} technician${pluralSuffix(absentCount)} out. The dispatcher reassigned ${recoveryCount} visits across ${machine.baselineSummary.workingTechniciansTouched} remaining technicians. It checked the current board again after each of ${machine.baseline.transitions.length} assignments. You decide whether to release that recovery or keep the ${flexibleCount} flexible visits with ${escapeHtml(NAMES[flexibleOwner] ?? flexibleOwner)}.</p>
-      <p class="safe-copy"><span aria-hidden="true">✓</span> ${pinnedCount} other visits stay pinned in both paths. The dispatcher does not look ahead or replan the day. Both choices keep certification rules; they trade ${changedTechnicians} changed technician${pluralSuffix(changedTechnicians)} against ${lateOutcomes} promised-window miss${pluralSuffix(lateOutcomes)}.</p>
+      <p class="safe-copy"><span aria-hidden="true">✓</span> ${capitalizeNumberWord(pinnedCount)} other visits stay pinned in both paths. The dispatcher does not look ahead or replan the day. Both choices keep certification rules; they trade ${changedTechnicians} changed technician${pluralSuffix(changedTechnicians)} against ${lateOutcomes} promised-window miss${pluralSuffix(lateOutcomes)}.</p>
       <button class="primary-button wide" type="button" data-action="start-breadth">Review the recovery</button>
       ${renderBreadthProvenance()}
     </section>
@@ -226,7 +226,7 @@ function renderRecoveryMatrix(result: SimulationResult, alternative: SimulationR
   const candidateRows = result.decisions.reduce((total, decision) => total + decision.ranking.length, 0);
   const candidateCount = result.decisions[0]?.ranking.length ?? 0;
   return `<section class="breadth-matrix" aria-labelledby="breadth-matrix-title">
-    <div class="section-heading"><div><p class="eyebrow">Recovery matrix · engine evidence</p><h2 id="breadth-matrix-title">${result.decisions.length} serial assignments</h2></div><span class="board-note">${candidateRows} candidate rows · same ${FACTOR_ORDER.length} factors</span></div>
+    <div class="section-heading"><div><p class="eyebrow">Recovery matrix · engine evidence</p><h2 id="breadth-matrix-title">${capitalizeNumberWord(result.decisions.length)} serial assignments</h2></div><span class="board-note">${candidateRows} candidate rows · same ${FACTOR_ORDER.length} factors</span></div>
     <p class="matrix-intro">Each visit became current in this order. After every actual assignment, the dispatcher used the updated availability and assigned work to rank all ${candidateCount} remaining technicians again.</p>
     <div class="recovery-rows">
       ${result.decisions.map((decision, index) => renderRecoveryRow(decision, result, alternative, index, findPivotalIndex(result))).join("")}
@@ -251,7 +251,7 @@ function renderRecoveryRow(
     : `${outcome.lateByMinutes} min late`;
   const previousAssignedId = result.outcomes[index - 1]?.assignedTechnicianId;
   const turn = pivotal && previousAssignedId !== null && previousAssignedId !== undefined
-    ? `<span class="breadth-turn"><strong>${escapeHtml(NAMES[previousAssignedId] ?? previousAssignedId)}</strong><i aria-hidden="true">→</i><span>assignment ${index} recorded</span><i aria-hidden="true">→</i><strong>All ${decision.ranking.length} rechecked</strong><i aria-hidden="true">→</i><strong>${escapeHtml(NAMES[decision.winner.technicianId] ?? decision.winner.technicianId)}</strong></span>`
+    ? `<span class="breadth-turn"><strong>${escapeHtml(NAMES[previousAssignedId] ?? previousAssignedId)}</strong><i aria-hidden="true">→</i><span>${index === 1 ? "first assignment recorded" : "assignment " + index + " recorded"}</span><i aria-hidden="true">→</i><strong>All ${decision.ranking.length} rechecked</strong><i aria-hidden="true">→</i><strong>${escapeHtml(NAMES[decision.winner.technicianId] ?? decision.winner.technicianId)}</strong></span>`
     : "";
   return `<details class="recovery-row ${pivotal ? "is-pivotal" : ""}">
     <summary>
@@ -425,6 +425,7 @@ function renderBreadthOutcome(state: BreadthConsoleState): string {
   const pinnedCount = comparison.pinnedVisits.length;
   const travelSaved = machine.addedTravelMinutes - summary.addedTravelMinutes;
   const touchedSaved = machine.workingTechniciansTouched - summary.workingTechniciansTouched;
+  const pinnedMovement = pinnedMovementClaim(summary.pinnedVisitsMoved);
   const changedMorningCopy = touchedSaved === 1
     ? "One fewer technician's morning changed"
     : numberWord(touchedSaved) + " fewer technician mornings changed";
@@ -432,8 +433,8 @@ function renderBreadthOutcome(state: BreadthConsoleState): string {
     ? `All ${numberWord(summary.recoveredVisitsInsideWindow)} recovered visits stayed inside their windows.`
     : `${changedMorningCopy} and ${numberWord(travelSaved)} drive minutes were saved.`;
   const calloutDetail = released
-    ? `The dispatcher changed ${summary.workingTechniciansTouched} remaining technicians' mornings. No pinned visit moved.`
-    : `${JOB_NAMES[diagnosticOutcome(comparison.player).eventId] ?? "Diagnostic repair"} completed ${diagnosticOutcome(comparison.player).lateByMinutes} minutes late. No pinned visit moved.`;
+    ? `The dispatcher changed ${summary.workingTechniciansTouched} remaining technicians' mornings. ${pinnedMovement}.`
+    : `${JOB_NAMES[diagnosticOutcome(comparison.player).eventId] ?? "Diagnostic repair"} completed ${diagnosticOutcome(comparison.player).lateByMinutes} minutes late. ${pinnedMovement}.`;
   return `<main id="main-content" class="breadth-shell phase-enter phase-breadth-outcome">
     ${renderBreadthSignals(comparison)}
     <section class="breadth-outcome-panel" aria-labelledby="breadth-outcome-title">
@@ -496,8 +497,8 @@ function renderBreadthDebrief(state: BreadthConsoleState): string {
     ? `The machine kept ${baseline.recoveredVisitsInsideWindow} of ${recoveryCount} recovered visits inside their windows under the same rules. You supplied release authority. Approving sound machine work is supervision, not spectatorship.`
     : `Your alternative achieved its stated goal. The cost was ${lateCount} late commitment${pluralSuffix(lateCount)}. The machine did not foresee that result; it consistently re-ranked the current board and selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} on the pivotal row.`;
   const causal = released
-    ? `At recovered visit ${pivotalIndex + 1}, the dispatcher selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} even though ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId} was ${pivotalCandidate.factors.travelTime.value.minutes - priorCandidate.factors.travelTime.value.minutes} minutes closer. ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId}'s first recovery changed the current wait to ${pivotalCandidate.factors.availability.value.waitMinutes} minutes and assigned load to ${pivotalCandidate.factors.utilisation.value.assignedMinutes}/${pivotalCandidate.factors.utilisation.value.capacityMinutes}. Rechecking ${pivotalDecision.ranking.length} technicians kept the diagnostic visit ${machineInside} minutes inside its window. The dispatcher did not predict a future job; it used the current board in front of it.`
-    : `At recovered visit ${pivotalIndex + 1}, you kept the diagnostic with ${minimumTechnicianName}. That saved ${travelSaved} drive minutes; ${untouchedTechnicianName} received no recovered assignment in this branch. ${minimumTechnicianName} had ${minimumPivotalCandidate.factors.availability.value.waitMinutes} minutes of current wait, so the diagnostic completed at ${formatClockMinute(minimumPivotalOutcome.completionMinute ?? 0)} — ${minimumPivotalOutcome.lateByMinutes} minutes outside its promised window. ${BREADTH_MINIMUM_TOUCH_PREVIEW.playerSummary.recoveredVisitsCertified} of ${recoveryCount} recovered visits met certification and ${BREADTH_MINIMUM_TOUCH_PREVIEW.playerSummary.pinnedVisitsMoved} pinned visits moved.`;
+    ? `At recovered visit ${pivotalIndex + 1}, the dispatcher selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} even though ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId} was ${pivotalCandidate.factors.travelTime.value.minutes - priorCandidate.factors.travelTime.value.minutes} minutes closer. ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId}'s first recovery changed the current wait to ${priorCandidate.factors.availability.value.waitMinutes} minutes and assigned load to ${priorCandidate.factors.utilisation.value.assignedMinutes}/${priorCandidate.factors.utilisation.value.capacityMinutes}. Rechecking ${pivotalDecision.ranking.length} technicians kept the diagnostic visit ${machineInside} minutes inside its window. The dispatcher did not predict a future job; it used the current board in front of it.`
+    : `At recovered visit ${pivotalIndex + 1}, you kept the diagnostic with ${minimumTechnicianName}. That saved ${travelSaved} drive minutes; ${untouchedTechnicianName} received no recovered assignment in this branch. ${minimumTechnicianName} had ${minimumPivotalCandidate.factors.availability.value.waitMinutes} minutes of current wait, so the diagnostic completed at ${formatClockMinute(minimumPivotalOutcome.completionMinute ?? 0)} — ${minimumPivotalOutcome.lateByMinutes} minutes outside its promised window. ${BREADTH_MINIMUM_TOUCH_PREVIEW.playerSummary.recoveredVisitsCertified} of ${recoveryCount} recovered visits met certification. No certification rule was broken and ${pinnedMovementClaim(BREADTH_MINIMUM_TOUCH_PREVIEW.playerSummary.pinnedVisitsMoved, false)}.`;
   return `<main id="main-content" class="breadth-shell phase-enter phase-breadth-debrief">
     <section class="debrief-panel breadth-debrief-panel" aria-labelledby="breadth-debrief-title">
       <div class="ledger-heading"><div><p class="eyebrow">Causal debrief · branch ledger</p><h1 id="breadth-debrief-title" tabindex="-1">7:05 AM · Sick-day recovery</h1></div><span class="not-score">No overall score</span></div>
@@ -505,7 +506,7 @@ function renderBreadthDebrief(state: BreadthConsoleState): string {
       ${renderBreadthLedger(player, baseline, released ? "Your released recovery" : "Your minimum-touch recovery", comparison.player.decisions.length)}
       ${released ? renderReleasedCounterfactual(machineResult, minimumResult) : ""}
       <div class="causal-summary"><strong>The only branch difference</strong><span>${escapeHtml(causal)}</span></div>
-      <blockquote class="breadth-central-sentence">The dispatcher did not foresee the day. It re-evaluated ${machineResult.decisions[0]?.ranking.length ?? 0} technicians after each of ${machineResult.transitions.length} assignments and applied the same rules every time. Your job was to decide whether that evidence was sufficient to release the recovery—not to repair each row yourself.</blockquote>
+      <blockquote class="breadth-central-sentence">The dispatcher did not foresee the day. It re-evaluated every technician after each assignment and applied the same rules every time. Your job was to decide whether that evidence was sufficient to release the recovery—not to repair each row yourself.</blockquote>
       <p class="breadth-teaching">${escapeHtml(finalTeaching)}</p>
       <div class="debrief-actions"><button class="secondary-button" type="button" data-action="open-breadth-trace">Open engineering trace</button><button class="primary-button" type="button" data-action="restart-breadth">Restart authored case</button></div>
     </section>
@@ -575,7 +576,7 @@ function renderBreadthTrace(state: BreadthConsoleState): string {
       <div><dt>Replay path</dt><dd><code>runBreadthComparison(BREADTH_CASE, "${escapeHtml(comparison.choice)}")</code></dd></div>
     </dl>
     <div class="trace-grid">
-      ${renderJsonPanel("Validated " + comparison.pinnedVisits.length + "-visit pinned manifest", comparison.pinnedVisits)}
+      ${renderJsonPanel("Validated " + numberWord(comparison.pinnedVisits.length) + "-visit pinned manifest", comparison.pinnedVisits)}
       ${renderJsonPanel("Initial " + boardTechnicianCount + "-technician board", comparison.player.decisions[0]?.inputSnapshot.boardState ?? null)}
       ${renderJsonPanel(decisionCount + " fixed recovered visits", comparison.player.exogenousEvents)}
       ${renderJsonPanel("Player decision evidence — " + candidateRows + " candidate rows", comparison.player.decisions)}
@@ -676,6 +677,18 @@ function numberWord(value: number): string {
     12: "twelve",
   };
   return words[value] ?? String(value);
+}
+
+function capitalizeNumberWord(value: number): string {
+  const word = numberWord(value);
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+function pinnedMovementClaim(moved: number, initialCapital = true): string {
+  const claim = moved === 0
+    ? "No pinned visit moved"
+    : moved + " pinned visits moved";
+  return initialCapital ? claim : claim.charAt(0).toLowerCase() + claim.slice(1);
 }
 
 function formatSigned(value: number): string {
