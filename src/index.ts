@@ -15,7 +15,6 @@ export type {
   BreadthCaseDefinition,
   BreadthChoice,
   BreadthComparison,
-  BreadthPinnedManifestReplay,
   BreadthPinnedVisit,
   BreadthRecoverySummary,
 } from "./breadth.js";
@@ -53,6 +52,7 @@ export type {
   ExogenousEvent,
   IntegerRange,
   JobBlueprint,
+  PinnedVisitState,
   ScenarioDefinition,
   ServiceOutcomeCode,
   SimulationOutcome,

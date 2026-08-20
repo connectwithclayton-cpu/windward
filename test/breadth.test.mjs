@@ -94,26 +94,35 @@ test("Breadth aggregates reconcile from recovery evidence and the eight pinned m
     true,
   );
   assert.deepEqual(
-    summarizeBreadthRecovery(comparison.player, comparison.pinnedReplay.player),
+    summarizeBreadthRecovery(comparison.player),
     comparison.playerSummary,
   );
   assert.deepEqual(
-    summarizeBreadthRecovery(comparison.baseline, comparison.pinnedReplay.baseline),
+    summarizeBreadthRecovery(comparison.baseline),
     comparison.baselineSummary,
   );
-  assert.deepEqual(comparison.pinnedReplay.player.before, BREADTH_CASE.pinnedVisits);
-  assert.deepEqual(comparison.pinnedReplay.player.after, BREADTH_CASE.pinnedVisits);
-  assert.deepEqual(comparison.pinnedReplay.baseline.before, BREADTH_CASE.pinnedVisits);
-  assert.deepEqual(comparison.pinnedReplay.baseline.after, BREADTH_CASE.pinnedVisits);
+  assert.deepEqual(comparison.player.pinnedVisitsBefore, BREADTH_CASE.pinnedVisits);
+  assert.deepEqual(comparison.player.pinnedVisitsAfter, BREADTH_CASE.pinnedVisits);
+  assert.deepEqual(comparison.baseline.pinnedVisitsBefore, BREADTH_CASE.pinnedVisits);
+  assert.deepEqual(comparison.baseline.pinnedVisitsAfter, BREADTH_CASE.pinnedVisits);
   assert.equal(comparison.playerSummary.pinnedVisitsMoved, 0);
   assert.equal(comparison.baselineSummary.pinnedVisitsMoved, 0);
   for (const choice of ["dispatcher-recovery", "minimum-touch"]) {
-    const replay = runBreadthComparison(BREADTH_CASE, choice).pinnedReplay;
+    const replay = runBreadthComparison(BREADTH_CASE, choice);
     for (const branch of [replay.player, replay.baseline]) {
-      assert.deepEqual(branch.before, BREADTH_CASE.pinnedVisits);
-      assert.deepEqual(branch.after, BREADTH_CASE.pinnedVisits);
+      assert.deepEqual(branch.pinnedVisitsBefore, BREADTH_CASE.pinnedVisits);
+      assert.deepEqual(branch.pinnedVisitsAfter, BREADTH_CASE.pinnedVisits);
     }
   }
+  const changedAfter = clone(comparison.player.pinnedVisitsAfter);
+  changedAfter[0].ownerId = "marcus-reed";
+  assert.equal(
+    summarizeBreadthRecovery({
+      ...comparison.player,
+      pinnedVisitsAfter: changedAfter,
+    }).pinnedVisitsMoved,
+    1,
+  );
   const pinnedIds = new Set(BREADTH_CASE.pinnedVisits.map((visit) => visit.id));
   assert.equal(
     comparison.player.decisions.some((decision) => pinnedIds.has(decision.inputSnapshot.job.id)),

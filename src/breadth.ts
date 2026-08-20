@@ -2,11 +2,12 @@ import {
   generateExogenousEvents,
   runPlayerAndBaseline,
   type BranchComparison,
+  type PinnedVisitState,
   type ScenarioDefinition,
   type SimulationOverride,
   type SimulationResult,
 } from "./simulation.js";
-import { clone, deepFreeze, stableFingerprint } from "./internal.js";
+import { deepFreeze, stableFingerprint } from "./internal.js";
 import type {
   CandidateEvidence,
   Decision,
@@ -16,27 +17,12 @@ import type {
 
 export type BreadthChoice = "dispatcher-recovery" | "minimum-touch";
 
-export interface BreadthPinnedVisit {
-  readonly id: string;
-  readonly name: string;
-  readonly ownerId: TechnicianId;
-  readonly promisedWindow: {
-    readonly startMinute: number;
-    readonly endMinute: number;
-  };
-  readonly completionMinute: number;
-  readonly status: "PINNED_UNCHANGED";
-}
+export interface BreadthPinnedVisit extends PinnedVisitState {}
 
 export interface BreadthCaseDefinition {
   readonly version: "windward-breadth-v1";
   readonly scenario: ScenarioDefinition;
   readonly pinnedVisits: readonly BreadthPinnedVisit[];
-}
-
-export interface BreadthPinnedManifestReplay {
-  readonly before: readonly BreadthPinnedVisit[];
-  readonly after: readonly BreadthPinnedVisit[];
 }
 
 export interface BreadthRecoverySummary {
@@ -53,11 +39,6 @@ export interface BreadthRecoverySummary {
 export interface BreadthComparison extends BranchComparison {
   readonly caseVersion: BreadthCaseDefinition["version"];
   readonly choice: BreadthChoice;
-  readonly pinnedVisits: readonly BreadthPinnedVisit[];
-  readonly pinnedReplay: {
-    readonly player: BreadthPinnedManifestReplay;
-    readonly baseline: BreadthPinnedManifestReplay;
-  };
   readonly playerSummary: BreadthRecoverySummary;
   readonly baselineSummary: BreadthRecoverySummary;
   readonly caseFingerprint: string;
@@ -89,6 +70,17 @@ const MINIMUM_TOUCH_ASSIGNMENTS = Object.freeze([
   "nina-flores",
   "dev-shah",
 ] as const);
+
+const BREADTH_PINNED_VISITS: readonly BreadthPinnedVisit[] = [
+  pinned("pinned-elena-1", "Morning membership visit", "elena-park", 450, 510, 500),
+  pinned("pinned-elena-2", "Afternoon follow-up", "elena-park", 840, 930, 900),
+  pinned("pinned-marcus-1", "Airflow check", "marcus-reed", 450, 540, 525),
+  pinned("pinned-marcus-2", "Repair follow-up", "marcus-reed", 780, 900, 865),
+  pinned("pinned-dev-1", "Morning no-cool visit", "dev-shah", 480, 600, 575),
+  pinned("pinned-dev-2", "System inspection", "dev-shah", 1_020, 1_110, 1_090),
+  pinned("pinned-nina-1", "Small-appliance service", "nina-flores", 450, 510, 495),
+  pinned("pinned-nina-2", "Kitchen repair", "nina-flores", 870, 960, 945),
+];
 
 export const BREADTH_MINIMUM_TOUCH_OVERRIDE: readonly SimulationOverride[] = Object.freeze([
   Object.freeze({
@@ -137,6 +129,7 @@ export const BREADTH_CASE: BreadthCaseDefinition = deepFreeze({
         },
       ],
     },
+    pinnedVisits: BREADTH_PINNED_VISITS,
     jobs: [
       {
         id: "breadth-maintenance-tune-up",
@@ -196,16 +189,7 @@ export const BREADTH_CASE: BreadthCaseDefinition = deepFreeze({
       },
     ],
   },
-  pinnedVisits: [
-    pinned("pinned-elena-1", "Morning membership visit", "elena-park", 450, 510, 500),
-    pinned("pinned-elena-2", "Afternoon follow-up", "elena-park", 840, 930, 900),
-    pinned("pinned-marcus-1", "Airflow check", "marcus-reed", 450, 540, 525),
-    pinned("pinned-marcus-2", "Repair follow-up", "marcus-reed", 780, 900, 865),
-    pinned("pinned-dev-1", "Morning no-cool visit", "dev-shah", 480, 600, 575),
-    pinned("pinned-dev-2", "System inspection", "dev-shah", 1_020, 1_110, 1_090),
-    pinned("pinned-nina-1", "Small-appliance service", "nina-flores", 450, 510, 495),
-    pinned("pinned-nina-2", "Kitchen repair", "nina-flores", 870, 960, 945),
-  ],
+  pinnedVisits: BREADTH_PINNED_VISITS,
 });
 
 const CANONICAL_CASE_FINGERPRINT = stableFingerprint(BREADTH_CASE);
@@ -216,6 +200,10 @@ export function validateBreadthCaseDefinition(definition: BreadthCaseDefinition)
   }
   if (stableFingerprint(definition) !== CANONICAL_CASE_FINGERPRINT) {
     throw new RangeError("Breadth case facts drifted from the validated fixture");
+  }
+  if (definition.scenario.pinnedVisits === undefined ||
+      stableFingerprint(definition.scenario.pinnedVisits) !== stableFingerprint(definition.pinnedVisits)) {
+    throw new RangeError("Breadth scenario and case pinned manifests drifted");
   }
   if (definition.pinnedVisits.length !== 8) {
     throw new RangeError("Breadth requires exactly eight pinned visits");
@@ -258,19 +246,13 @@ export function runBreadthComparison(
   const overrides = choice === "minimum-touch" ? BREADTH_MINIMUM_TOUCH_OVERRIDE : [];
   const comparison = runPlayerAndBaseline(definition.scenario, overrides);
   validateBreadthBranches(comparison, choice);
-  const pinnedReplay = {
-    player: replayPinnedManifest(definition.pinnedVisits, comparison.player),
-    baseline: replayPinnedManifest(definition.pinnedVisits, comparison.baseline),
-  };
-  const playerSummary = summarizeBreadthRecovery(comparison.player, pinnedReplay.player);
-  const baselineSummary = summarizeBreadthRecovery(comparison.baseline, pinnedReplay.baseline);
+  const playerSummary = summarizeBreadthRecovery(comparison.player);
+  const baselineSummary = summarizeBreadthRecovery(comparison.baseline);
   validateSummaries(playerSummary, baselineSummary, choice);
   const output: BreadthComparison = {
     ...comparison,
     caseVersion: definition.version,
     choice,
-    pinnedVisits: clone(pinnedReplay.player.before),
-    pinnedReplay,
     playerSummary,
     baselineSummary,
     caseFingerprint: CANONICAL_CASE_FINGERPRINT,
@@ -279,7 +261,6 @@ export function runBreadthComparison(
       exogenousFingerprint: comparison.exogenousFingerprint,
       player: comparison.player,
       baseline: comparison.baseline,
-      pinnedReplay,
     }),
   };
   return deepFreeze(output);
@@ -287,17 +268,16 @@ export function runBreadthComparison(
 
 export function summarizeBreadthRecovery(
   result: SimulationResult,
-  pinnedReplay: BreadthPinnedManifestReplay,
 ): BreadthRecoverySummary {
   if (result.decisions.length !== 4 || result.outcomes.length !== 4) {
     throw new RangeError("Breadth recovery must contain exactly four decisions and outcomes");
   }
-  validatePinnedManifestReplay(pinnedReplay);
-  const pinnedVisitsMoved = countPinnedVisitsMoved(pinnedReplay);
-  const pinnedInside = pinnedReplay.before.filter(
+  const pinnedVisits = requirePinnedVisits(result);
+  const pinnedVisitsMoved = countPinnedVisitsMoved(pinnedVisits.before, pinnedVisits.after);
+  const pinnedInside = pinnedVisits.after.filter(
     (visit) => visit.completionMinute <= visit.promisedWindow.endMinute,
   ).length;
-  if (pinnedReplay.before.length !== 8) {
+  if (pinnedVisits.before.length !== 8) {
     throw new RangeError("Breadth summary requires eight immutable pinned visits");
   }
   const selectedCandidates = result.decisions.map((decision, index) => {
@@ -438,44 +418,37 @@ function requireEligibleCandidate(
   return candidate;
 }
 
-function replayPinnedManifest(
-  pinnedVisits: readonly BreadthPinnedVisit[],
+function requirePinnedVisits(
   result: SimulationResult,
-): BreadthPinnedManifestReplay {
-  const pinnedIds = new Set(pinnedVisits.map((visit) => visit.id));
-  for (const transition of result.transitions) {
-    if (pinnedIds.has(transition.eventId)) {
-      throw new RangeError("Pinned visit entered the recovery replay: " + transition.eventId);
-    }
+): { readonly before: readonly BreadthPinnedVisit[]; readonly after: readonly BreadthPinnedVisit[] } {
+  if (result.pinnedVisitsBefore === undefined || result.pinnedVisitsAfter === undefined) {
+    throw new RangeError("Breadth replay must expose before-and-after pinned manifests");
   }
-  return deepFreeze({
-    before: clone(pinnedVisits),
-    after: clone(pinnedVisits),
-  });
+  validatePinnedVisits(result.pinnedVisitsBefore);
+  validatePinnedVisits(result.pinnedVisitsAfter);
+  return {
+    before: result.pinnedVisitsBefore,
+    after: result.pinnedVisitsAfter,
+  };
 }
 
-function validatePinnedManifestReplay(
-  pinnedReplay: BreadthPinnedManifestReplay,
-): void {
-  for (const manifest of [pinnedReplay.before, pinnedReplay.after]) {
-    const ids = new Set<string>();
-    for (const visit of manifest) {
-      if (ids.has(visit.id)) {
-        throw new RangeError("duplicate pinned visit id: " + visit.id);
-      }
-      ids.add(visit.id);
-      if (visit.status !== "PINNED_UNCHANGED") {
-        throw new RangeError("pinned visit " + visit.id + " is not immutable");
-      }
+function validatePinnedVisits(visits: readonly BreadthPinnedVisit[]): void {
+  const ids = new Set<string>();
+  for (const visit of visits) {
+    if (ids.has(visit.id)) throw new RangeError("duplicate pinned visit id: " + visit.id);
+    ids.add(visit.id);
+    if (visit.status !== "PINNED_UNCHANGED") {
+      throw new RangeError("pinned visit " + visit.id + " is not immutable");
     }
   }
 }
 
 function countPinnedVisitsMoved(
-  pinnedReplay: BreadthPinnedManifestReplay,
+  before: readonly BreadthPinnedVisit[],
+  after: readonly BreadthPinnedVisit[],
 ): number {
-  const beforeById = new Map(pinnedReplay.before.map((visit) => [visit.id, visit]));
-  const afterById = new Map(pinnedReplay.after.map((visit) => [visit.id, visit]));
+  const beforeById = new Map(before.map((visit) => [visit.id, visit]));
+  const afterById = new Map(after.map((visit) => [visit.id, visit]));
   const ids = new Set([...beforeById.keys(), ...afterById.keys()]);
   let moved = 0;
   for (const id of ids) {

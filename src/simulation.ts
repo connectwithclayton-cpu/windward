@@ -48,6 +48,16 @@ export interface ScenarioDefinition {
   readonly seed: string | number;
   readonly initialBoard: BoardState;
   readonly jobs: readonly JobBlueprint[];
+  readonly pinnedVisits?: readonly PinnedVisitState[];
+}
+
+export interface PinnedVisitState {
+  readonly id: string;
+  readonly name: string;
+  readonly ownerId: TechnicianId;
+  readonly promisedWindow: PromisedTimeWindow;
+  readonly completionMinute: number;
+  readonly status: "PINNED_UNCHANGED";
 }
 
 export interface ExogenousEvent {
@@ -101,6 +111,8 @@ export interface SimulationResult {
   readonly outcomes: readonly SimulationOutcome[];
   readonly transitions: readonly SimulationTransition[];
   readonly finalBoard: BoardState;
+  readonly pinnedVisitsBefore?: readonly PinnedVisitState[];
+  readonly pinnedVisitsAfter?: readonly PinnedVisitState[];
 }
 
 export interface BranchComparison {
@@ -204,6 +216,7 @@ export function simulateScenario(
     clone(scenario.initialBoard),
     clone(generateExogenousEvents(scenario)),
     overrides,
+    scenario.pinnedVisits,
   );
 }
 
@@ -221,12 +234,14 @@ export function runPlayerAndBaseline(
     clone(scenario.initialBoard),
     clone(events),
     playerOverrides,
+    scenario.pinnedVisits,
   );
   const baseline = simulateEvents(
     scenario.seed,
     clone(scenario.initialBoard),
     clone(events),
     [],
+    scenario.pinnedVisits,
   );
   return deepFreeze({
     player,
@@ -240,6 +255,7 @@ function simulateEvents(
   initialBoard: BoardState,
   exogenousEvents: readonly ExogenousEvent[],
   overrides: readonly SimulationOverride[],
+  pinnedVisits?: readonly PinnedVisitState[],
 ): SimulationResult {
   const overrideByEvent = new Map<string, SimulationOverride>();
   for (const [index, override] of overrides.entries()) {
@@ -257,11 +273,24 @@ function simulateEvents(
   }
 
   let board = clone(initialBoard);
+  const pinnedVisitsBefore = pinnedVisits === undefined ? undefined : clone(pinnedVisits);
+  let pinnedVisitsAfter = pinnedVisitsBefore === undefined ? undefined : clone(pinnedVisitsBefore);
+  const pinnedVisitList = pinnedVisitsBefore ?? [];
+  const pinnedIds = new Set(pinnedVisitList.map((visit) => visit.id));
+  if (pinnedIds.size !== pinnedVisitList.length) {
+    throw new RangeError("pinned visits must have unique ids");
+  }
+  for (const visit of pinnedVisitList) {
+    if (visit.status !== "PINNED_UNCHANGED") {
+      throw new RangeError("pinned visit " + visit.id + " is not immutable");
+    }
+  }
   const decisions: Decision[] = [];
   const outcomes: SimulationOutcome[] = [];
   const transitions: SimulationTransition[] = [];
 
   for (const event of exogenousEvents) {
+    pinnedVisitsAfter = advancePinnedVisits(pinnedVisitsAfter, event.eventId, pinnedIds);
     const beforeBoard = clone(board);
     const decision = dispatch(board, event.job);
     const override = overrideByEvent.get(event.eventId);
@@ -329,6 +358,9 @@ function simulateEvents(
     });
   }
 
+  const pinnedManifest = pinnedVisitsBefore === undefined || pinnedVisitsAfter === undefined
+    ? {}
+    : { pinnedVisitsBefore, pinnedVisitsAfter };
   return deepFreeze({
     seed,
     exogenousEvents: clone(exogenousEvents),
@@ -336,7 +368,20 @@ function simulateEvents(
     outcomes,
     transitions,
     finalBoard: board,
+    ...pinnedManifest,
   });
+}
+
+function advancePinnedVisits(
+  pinnedVisits: readonly PinnedVisitState[] | undefined,
+  eventId: string,
+  pinnedIds: ReadonlySet<string>,
+): readonly PinnedVisitState[] | undefined {
+  if (pinnedVisits === undefined) return undefined;
+  if (pinnedIds.has(eventId)) {
+    throw new RangeError("Pinned visit entered the recovery replay: " + eventId);
+  }
+  return clone(pinnedVisits);
 }
 
 function validateOverride(override: SimulationOverride, index: number): void {

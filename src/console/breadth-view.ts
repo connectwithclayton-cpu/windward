@@ -1,5 +1,4 @@
 import {
-  BREADTH_CASE,
   type BreadthComparison,
   type BreadthPinnedVisit,
   type BreadthRecoverySummary,
@@ -105,8 +104,9 @@ export function renderBreadthConsole(state: BreadthConsoleState): string {
 
 function renderBreadthBriefing(): string {
   const machine = BREADTH_MACHINE_PREVIEW;
+  const pinnedEvidence = pinnedManifestEvidence(machine);
   const recoveryCount = machine.baseline.decisions.length;
-  const pinnedCount = machine.pinnedVisits.length;
+  const pinnedCount = pinnedEvidence.player.before.length;
   const absentCount = BREADTH_ROSTER.length - (machine.baseline.decisions[0]?.inputSnapshot.boardState.technicians.length ?? 0);
   const flexibleOwner = repeatedAssignmentOwner(BREADTH_MINIMUM_TOUCH_PREVIEW.player);
   const flexibleCount = BREADTH_MINIMUM_TOUCH_PREVIEW.player.outcomes.filter(
@@ -114,6 +114,9 @@ function renderBreadthBriefing(): string {
   ).length;
   const changedTechnicians = machine.baselineSummary.workingTechniciansTouched - BREADTH_MINIMUM_TOUCH_PREVIEW.playerSummary.workingTechniciansTouched;
   const lateOutcomes = countLateOutcomes(BREADTH_MINIMUM_TOUCH_PREVIEW.player);
+  const pinnedCopy = pinnedEvidence.allUnchanged && pinnedEvidence.allInside
+    ? `${capitalizeNumberWord(pinnedCount)} other visits stay pinned in both paths.`
+    : "Pinned-visit evidence requires review before release.";
   return `<main id="main-content" class="breadth-shell breadth-briefing phase-enter">
     ${renderBreadthSignals(null)}
     <section class="risk-briefing-card breadth-briefing-card" role="dialog" aria-modal="true" aria-labelledby="breadth-briefing-title">
@@ -121,7 +124,7 @@ function renderBreadthBriefing(): string {
       <h1 id="breadth-briefing-title" tabindex="-1">You supervise a dispatch recovery.</h1>
       ${renderCaseCards("breadth")}
       <p class="briefing-copy">${absentCount} technician${pluralSuffix(absentCount)} out. The dispatcher reassigned ${recoveryCount} visits across ${machine.baselineSummary.workingTechniciansTouched} remaining technicians. It checked the current board again after each of ${machine.baseline.transitions.length} assignments. You decide whether to release that recovery or keep the ${flexibleCount} flexible visits with ${escapeHtml(NAMES[flexibleOwner] ?? flexibleOwner)}.</p>
-      <p class="safe-copy"><span aria-hidden="true">✓</span> ${capitalizeNumberWord(pinnedCount)} other visits stay pinned in both paths. The dispatcher does not look ahead or replan the day. Both choices keep certification rules; they trade ${changedTechnicians} changed technician${pluralSuffix(changedTechnicians)} against ${lateOutcomes} promised-window miss${pluralSuffix(lateOutcomes)}.</p>
+      <p class="safe-copy"><span aria-hidden="true">✓</span> ${pinnedCopy} The dispatcher does not look ahead or replan the day. Both choices keep certification rules; they trade ${changedTechnicians} changed technician${pluralSuffix(changedTechnicians)} against ${lateOutcomes} promised-window miss${pluralSuffix(lateOutcomes)}.</p>
       <button class="primary-button wide" type="button" data-action="start-breadth">Review the recovery</button>
       ${renderBreadthProvenance()}
     </section>
@@ -131,7 +134,7 @@ function renderBreadthBriefing(): string {
 function renderBreadthSignals(comparison: BreadthComparison | null): string {
   const evidence = comparison ?? BREADTH_MACHINE_PREVIEW;
   const recoveryCount = evidence.baseline.decisions.length;
-  const pinnedCount = evidence.pinnedVisits.length;
+  const pinnedCount = pinnedManifestEvidence(evidence).player.before.length;
   const releaseResult = comparison === null
     ? "Promised-window result shown after ranking"
     : `${comparison.playerSummary.recoveredVisitsCertified} of ${recoveryCount} certified · ${comparison.playerSummary.recoveredVisitsInsideWindow} of ${recoveryCount} inside windows`;
@@ -360,9 +363,11 @@ function renderBreadthOmission(): string {
 }
 
 function renderBreadthBoard(state: BreadthConsoleState): string {
+  const comparison = state.comparison ?? BREADTH_MACHINE_PREVIEW;
+  const pinnedVisits = pinnedManifestEvidence(comparison).player.before;
   const result = state.comparison?.player ?? null;
   const assigned = result !== null;
-  const recoveredCards = BREADTH_MACHINE_PREVIEW.baseline.decisions.map((decision, index) => {
+  const recoveredCards = comparison.baseline.decisions.map((decision, index) => {
     const selectedId = result?.outcomes[index]?.assignedTechnicianId ?? null;
     return `<article class="recovered-visit ${assigned ? "is-placed" : "is-unassigned"}">
       <span class="component-label">Recovered visit ${index + 1}</span>
@@ -372,8 +377,8 @@ function renderBreadthBoard(state: BreadthConsoleState): string {
     </article>`;
   }).join("");
   return `<section class="surface breadth-board" aria-labelledby="breadth-board-title">
-    <div class="section-heading"><div><p class="eyebrow">${BREADTH_ROSTER.length + BREADTH_CASE.pinnedVisits.length - 1}`-visit board</p><h2 id="breadth-board-title">${BREADTH_CASE.pinnedVisits.length} pinned. ${BREADTH_MACHINE_PREVIEW.baseline.decisions.length} recovered.</h2></div><span class="board-note">No pinned visit enters ranking</span></div>
-    ${renderPinnedBand(BREADTH_CASE.pinnedVisits)}
+    <div class="section-heading"><div><p class="eyebrow">${BREADTH_ROSTER.length + pinnedVisits.length - 1}-visit board</p><h2 id="breadth-board-title">${pinnedVisits.length} pinned. ${comparison.baseline.decisions.length} recovered.</h2></div><span class="board-note">No pinned visit enters ranking</span></div>
+    ${renderPinnedBand(pinnedVisits)}
     <div class="breadth-roster" aria-label="${BREADTH_ROSTER.length} fictional technicians">
       ${BREADTH_ROSTER.map((profile) => renderBreadthLane(profile, result)).join("")}
     </div>
@@ -419,13 +424,14 @@ function renderBreadthLane(
 function renderBreadthOutcome(state: BreadthConsoleState): string {
   const comparison = requireComparison(state);
   const summary = comparison.playerSummary;
+  const pinnedEvidence = pinnedManifestEvidence(comparison);
   const released = state.choice === "dispatcher-recovery";
   const machine = comparison.baselineSummary;
   const recoveryCount = comparison.player.decisions.length;
-  const pinnedCount = comparison.pinnedVisits.length;
+  const pinnedCount = pinnedEvidence.player.before.length;
   const travelSaved = machine.addedTravelMinutes - summary.addedTravelMinutes;
   const touchedSaved = machine.workingTechniciansTouched - summary.workingTechniciansTouched;
-  const pinnedMovement = pinnedMovementClaim(summary.pinnedVisitsMoved);
+  const pinnedMovement = pinnedMovementClaim(pinnedEvidence.player.moved);
   const changedMorningCopy = touchedSaved === 1
     ? "One fewer technician's morning changed"
     : numberWord(touchedSaved) + " fewer technician mornings changed";
@@ -435,6 +441,9 @@ function renderBreadthOutcome(state: BreadthConsoleState): string {
   const calloutDetail = released
     ? `The dispatcher changed ${summary.workingTechniciansTouched} remaining technicians' mornings. ${pinnedMovement}.`
     : `${JOB_NAMES[diagnosticOutcome(comparison.player).eventId] ?? "Diagnostic repair"} completed ${diagnosticOutcome(comparison.player).lateByMinutes} minutes late. ${pinnedMovement}.`;
+  const pinnedOutcomeCopy = pinnedEvidence.allUnchanged && pinnedEvidence.allInside
+    ? `All ${pinnedCount} authored pinned visits remained inside their windows in both paths.`
+    : "Pinned-visit evidence changed; review the branch trace.";
   return `<main id="main-content" class="breadth-shell phase-enter phase-breadth-outcome">
     ${renderBreadthSignals(comparison)}
     <section class="breadth-outcome-panel" aria-labelledby="breadth-outcome-title">
@@ -446,7 +455,7 @@ function renderBreadthOutcome(state: BreadthConsoleState): string {
       <div class="recovery-timeline">
         ${comparison.player.decisions.map((decision, index) => renderOutcomeCard(decision, comparison.player, index)).join("")}
       </div>
-      <p class="pinned-outcome"><strong>${pinnedCount} pinned visits · unchanged</strong><span>All ${pinnedCount} authored pinned visits remained inside their windows in both paths.</span></p>
+      <p class="pinned-outcome"><strong>${pinnedCount} pinned visits · ${pinnedEvidence.allUnchanged ? "unchanged" : "changed"}</strong><span>${pinnedOutcomeCopy}</span></p>
       <button class="primary-button wide" type="button" data-action="open-breadth-debrief">Open causal debrief</button>
     </section>
     ${renderBreadthBoard(state)}
@@ -468,6 +477,7 @@ function renderOutcomeCard(decision: Decision, result: SimulationResult, index: 
 
 function renderBreadthDebrief(state: BreadthConsoleState): string {
   const comparison = requireComparison(state);
+  const pinnedEvidence = pinnedManifestEvidence(comparison);
   const player = comparison.playerSummary;
   const baseline = comparison.baselineSummary;
   const released = state.choice === "dispatcher-recovery";
@@ -498,12 +508,12 @@ function renderBreadthDebrief(state: BreadthConsoleState): string {
     : `Your alternative achieved its stated goal. The cost was ${lateCount} late commitment${pluralSuffix(lateCount)}. The machine did not foresee that result; it consistently re-ranked the current board and selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} on the pivotal row.`;
   const causal = released
     ? `At recovered visit ${pivotalIndex + 1}, the dispatcher selected ${NAMES[pivotalCandidate.technicianId] ?? pivotalCandidate.technicianId} even though ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId} was ${pivotalCandidate.factors.travelTime.value.minutes - priorCandidate.factors.travelTime.value.minutes} minutes closer. ${NAMES[priorCandidate.technicianId] ?? priorCandidate.technicianId}'s first recovery changed the current wait to ${priorCandidate.factors.availability.value.waitMinutes} minutes and assigned load to ${priorCandidate.factors.utilisation.value.assignedMinutes}/${priorCandidate.factors.utilisation.value.capacityMinutes}. Rechecking ${pivotalDecision.ranking.length} technicians kept the diagnostic visit ${machineInside} minutes inside its window. The dispatcher did not predict a future job; it used the current board in front of it.`
-    : `At recovered visit ${pivotalIndex + 1}, you kept the diagnostic with ${minimumTechnicianName}. That saved ${travelSaved} drive minutes; ${untouchedTechnicianName} received no recovered assignment in this branch. ${minimumTechnicianName} had ${minimumPivotalCandidate.factors.availability.value.waitMinutes} minutes of current wait, so the diagnostic completed at ${formatClockMinute(minimumPivotalOutcome.completionMinute ?? 0)} — ${minimumPivotalOutcome.lateByMinutes} minutes outside its promised window. ${BREADTH_MINIMUM_TOUCH_PREVIEW.playerSummary.recoveredVisitsCertified} of ${recoveryCount} recovered visits met certification. No certification rule was broken and ${pinnedMovementClaim(BREADTH_MINIMUM_TOUCH_PREVIEW.playerSummary.pinnedVisitsMoved, false)}.`;
+    : `At recovered visit ${pivotalIndex + 1}, you kept the diagnostic with ${minimumTechnicianName}. That saved ${travelSaved} drive minutes; ${untouchedTechnicianName} received no recovered assignment in this branch. ${minimumTechnicianName} had ${minimumPivotalCandidate.factors.availability.value.waitMinutes} minutes of current wait, so the diagnostic completed at ${formatClockMinute(minimumPivotalOutcome.completionMinute ?? 0)} — ${minimumPivotalOutcome.lateByMinutes} minutes outside its promised window. ${comparison.playerSummary.recoveredVisitsCertified} of ${recoveryCount} recovered visits met certification. No certification rule was broken and ${pinnedMovementClaim(pinnedEvidence.player.moved, false)}.`;
   return `<main id="main-content" class="breadth-shell phase-enter phase-breadth-debrief">
     <section class="debrief-panel breadth-debrief-panel" aria-labelledby="breadth-debrief-title">
       <div class="ledger-heading"><div><p class="eyebrow">Causal debrief · branch ledger</p><h1 id="breadth-debrief-title" tabindex="-1">7:05 AM · Sick-day recovery</h1></div><span class="not-score">No overall score</span></div>
       <p class="debrief-position">${released ? "You released the dispatcher-ranked assignments." : "You kept both flexible visits with " + flexibleTechnicianName(minimumResult) + "."}</p>
-      ${renderBreadthLedger(player, baseline, released ? "Your released recovery" : "Your minimum-touch recovery", comparison.player.decisions.length)}
+      ${renderBreadthLedger(player, baseline, released ? "Your released recovery" : "Your minimum-touch recovery", comparison.player.decisions.length, pinnedEvidence.player.before.length)}
       ${released ? renderReleasedCounterfactual(machineResult, minimumResult) : ""}
       <div class="causal-summary"><strong>The only branch difference</strong><span>${escapeHtml(causal)}</span></div>
       <blockquote class="breadth-central-sentence">The dispatcher did not foresee the day. It re-evaluated every technician after each assignment and applied the same rules every time. Your job was to decide whether that evidence was sufficient to release the recovery—not to repair each row yourself.</blockquote>
@@ -519,12 +529,13 @@ function renderBreadthLedger(
   baseline: BreadthRecoverySummary,
   playerLabel: string,
   recoveryCount: number,
+  pinnedCount: number,
 ): string {
   const rows: readonly (readonly [string, string, string])[] = [
     ["Pinned visits moved", String(player.pinnedVisitsMoved), String(baseline.pinnedVisitsMoved)],
     ["Recovered visits certified", `${player.recoveredVisitsCertified} of ${recoveryCount}`, `${baseline.recoveredVisitsCertified} of ${recoveryCount}`],
     ["Recovered visits inside window", `${player.recoveredVisitsInsideWindow} of ${recoveryCount}`, `${baseline.recoveredVisitsInsideWindow} of ${recoveryCount}`],
-    ["Whole day inside window", `${player.wholeDayInsideWindow} of ${recoveryCount + BREADTH_CASE.pinnedVisits.length}`, `${baseline.wholeDayInsideWindow} of ${recoveryCount + BREADTH_CASE.pinnedVisits.length}`],
+    ["Whole day inside window", `${player.wholeDayInsideWindow} of ${recoveryCount + pinnedCount}`, `${baseline.wholeDayInsideWindow} of ${recoveryCount + pinnedCount}`],
     ["Added travel", `${player.addedTravelMinutes} min`, `${baseline.addedTravelMinutes} min`],
     ["Working technicians touched", String(player.workingTechniciansTouched), String(baseline.workingTechniciansTouched)],
   ];
@@ -556,6 +567,7 @@ function renderReleasedCounterfactual(machine: SimulationResult, minimum: Simula
 
 function renderBreadthTrace(state: BreadthConsoleState): string {
   const comparison = requireComparison(state);
+  const pinnedEvidence = pinnedManifestEvidence(comparison);
   const candidateRows = comparison.player.decisions.reduce(
     (total, decision) => total + decision.ranking.length,
     0,
@@ -576,7 +588,7 @@ function renderBreadthTrace(state: BreadthConsoleState): string {
       <div><dt>Replay path</dt><dd><code>runBreadthComparison(BREADTH_CASE, "${escapeHtml(comparison.choice)}")</code></dd></div>
     </dl>
     <div class="trace-grid">
-      ${renderJsonPanel("Validated " + numberWord(comparison.pinnedVisits.length) + "-visit pinned manifest", comparison.pinnedVisits)}
+      ${renderJsonPanel("Validated " + numberWord(pinnedEvidence.player.before.length) + "-visit pinned manifest", pinnedEvidence.player.before)}
       ${renderJsonPanel("Initial " + boardTechnicianCount + "-technician board", comparison.player.decisions[0]?.inputSnapshot.boardState ?? null)}
       ${renderJsonPanel(decisionCount + " fixed recovered visits", comparison.player.exogenousEvents)}
       ${renderJsonPanel("Player decision evidence — " + candidateRows + " candidate rows", comparison.player.decisions)}
@@ -654,6 +666,75 @@ function diagnosticOutcome(result: SimulationResult): SimulationResult["outcomes
 
 function countLateOutcomes(result: SimulationResult): number {
   return result.outcomes.filter((outcome) => outcome.lateByMinutes > 0).length;
+}
+
+interface PinnedBranchEvidence {
+  readonly before: readonly BreadthPinnedVisit[];
+  readonly after: readonly BreadthPinnedVisit[];
+  readonly moved: number;
+}
+
+interface PinnedManifestEvidence {
+  readonly player: PinnedBranchEvidence;
+  readonly baseline: PinnedBranchEvidence;
+  readonly allUnchanged: boolean;
+  readonly allInside: boolean;
+}
+
+function pinnedManifestEvidence(comparison: BreadthComparison): PinnedManifestEvidence {
+  const player = pinnedBranchEvidence(comparison.player);
+  const baseline = pinnedBranchEvidence(comparison.baseline);
+  if (player.before.length !== baseline.before.length ||
+      player.after.length !== baseline.after.length) {
+    throw new Error("Breadth branch pinned manifests have different sizes");
+  }
+  const manifests = [player.before, player.after, baseline.before, baseline.after];
+  return {
+    player,
+    baseline,
+    allUnchanged: player.moved === 0 && baseline.moved === 0,
+    allInside: manifests.every((manifest) =>
+      manifest.every((visit) => visit.completionMinute <= visit.promisedWindow.endMinute)),
+  };
+}
+
+function pinnedBranchEvidence(result: SimulationResult): PinnedBranchEvidence {
+  if (result.pinnedVisitsBefore === undefined || result.pinnedVisitsAfter === undefined) {
+    throw new Error("Breadth replay has no pinned manifest evidence");
+  }
+  return {
+    before: result.pinnedVisitsBefore,
+    after: result.pinnedVisitsAfter,
+    moved: countPinnedVisitsMoved(result.pinnedVisitsBefore, result.pinnedVisitsAfter),
+  };
+}
+
+function countPinnedVisitsMoved(
+  before: readonly BreadthPinnedVisit[],
+  after: readonly BreadthPinnedVisit[],
+): number {
+  const beforeById = new Map(before.map((visit) => [visit.id, visit]));
+  const afterById = new Map(after.map((visit) => [visit.id, visit]));
+  const ids = new Set([...beforeById.keys(), ...afterById.keys()]);
+  let moved = 0;
+  for (const id of ids) {
+    if (!samePinnedVisit(beforeById.get(id), afterById.get(id))) moved += 1;
+  }
+  return moved;
+}
+
+function samePinnedVisit(
+  before: BreadthPinnedVisit | undefined,
+  after: BreadthPinnedVisit | undefined,
+): boolean {
+  return before !== undefined && after !== undefined &&
+    before.id === after.id &&
+    before.name === after.name &&
+    before.ownerId === after.ownerId &&
+    before.promisedWindow.startMinute === after.promisedWindow.startMinute &&
+    before.promisedWindow.endMinute === after.promisedWindow.endMinute &&
+    before.completionMinute === after.completionMinute &&
+    before.status === after.status;
 }
 
 function pluralSuffix(count: number): string {

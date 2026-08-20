@@ -98,14 +98,17 @@ test("both Breadth choices focus a legible receipt and reach respectful outcomes
   assert.match(minimumOutcomeHtml, /One fewer technician's morning changed and seven drive minutes were saved/);
   assert.match(minimumOutcomeHtml, /Diagnostic repair[\s\S]*11:43 AM[\s\S]*13 min late/);
 
+  const alteredPinnedAfter = minimum.comparison.player.pinnedVisitsAfter.map((visit, index) =>
+    index === 0 ? { ...visit, ownerId: "marcus-reed" } : visit,
+  );
   const alteredOutcomeHtml = renderBreadthConsole({
     ...minimum,
     phase: "outcome",
     comparison: {
       ...minimum.comparison,
-      playerSummary: {
-        ...minimum.comparison.playerSummary,
-        pinnedVisitsMoved: 1,
+      player: {
+        ...minimum.comparison.player,
+        pinnedVisitsAfter: alteredPinnedAfter,
       },
     },
   });
