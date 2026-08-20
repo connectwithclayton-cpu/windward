@@ -364,9 +364,13 @@ function renderBreadthOmission(): string {
 
 function renderBreadthBoard(state: BreadthConsoleState): string {
   const comparison = state.comparison ?? BREADTH_MACHINE_PREVIEW;
-  const pinnedVisits = pinnedManifestEvidence(comparison).player.before;
+  const pinnedEvidence = pinnedManifestEvidence(comparison);
+  const pinnedVisits = pinnedEvidence.player.after;
   const result = state.comparison?.player ?? null;
   const assigned = result !== null;
+  const boardNote = pinnedEvidence.allUnranked
+    ? "No pinned visit enters ranking"
+    : "Pinned ranking evidence changed";
   const recoveredCards = comparison.baseline.decisions.map((decision, index) => {
     const selectedId = result?.outcomes[index]?.assignedTechnicianId ?? null;
     return `<article class="recovered-visit ${assigned ? "is-placed" : "is-unassigned"}">
@@ -377,8 +381,8 @@ function renderBreadthBoard(state: BreadthConsoleState): string {
     </article>`;
   }).join("");
   return `<section class="surface breadth-board" aria-labelledby="breadth-board-title">
-    <div class="section-heading"><div><p class="eyebrow">${BREADTH_ROSTER.length + pinnedVisits.length - 1}-visit board</p><h2 id="breadth-board-title">${pinnedVisits.length} pinned. ${comparison.baseline.decisions.length} recovered.</h2></div><span class="board-note">No pinned visit enters ranking</span></div>
-    ${renderPinnedBand(pinnedVisits)}
+    <div class="section-heading"><div><p class="eyebrow">${BREADTH_ROSTER.length + pinnedVisits.length - 1}-visit board</p><h2 id="breadth-board-title">${pinnedVisits.length} pinned. ${comparison.baseline.decisions.length} recovered.</h2></div><span class="board-note">${boardNote}</span></div>
+    ${renderPinnedBand(pinnedEvidence)}
     <div class="breadth-roster" aria-label="${BREADTH_ROSTER.length} fictional technicians">
       ${BREADTH_ROSTER.map((profile) => renderBreadthLane(profile, result)).join("")}
     </div>
@@ -389,11 +393,22 @@ function renderBreadthBoard(state: BreadthConsoleState): string {
   </section>`;
 }
 
-function renderPinnedBand(visits: readonly BreadthPinnedVisit[]): string {
+function renderPinnedBand(evidence: PinnedManifestEvidence): string {
+  const visits = evidence.player.after;
+  const status = evidence.allUnchanged ? "unchanged" : "changed";
+  const detail = evidence.allUnchanged && evidence.allUnranked
+    ? "Never re-ranked in either path"
+    : "Paired branch manifests differ";
+  const beforeById = new Map(evidence.player.before.map((visit) => [visit.id, visit]));
   return `<details class="pinned-band">
-    <summary><span aria-hidden="true">▣</span><strong>${visits.length} pinned visits · unchanged</strong><small>Never re-ranked in either path</small></summary>
+    <summary><span aria-hidden="true">▣</span><strong>${visits.length} pinned visits · ${status}</strong><small>${detail}</small></summary>
     <div class="pinned-grid">
-      ${visits.map((visit) => `<article><span class="component-label">Pinned · ${escapeHtml(NAMES[visit.ownerId] ?? visit.ownerId)}</span><strong>${escapeHtml(visit.name)}</strong><small>${formatClockMinute(visit.promisedWindow.startMinute)}–${formatClockMinute(visit.promisedWindow.endMinute)} · in window</small></article>`).join("")}
+      ${visits.map((visit) => {
+        const changed = !samePinnedVisit(beforeById.get(visit.id), visit);
+        const inside = visit.completionMinute <= visit.promisedWindow.endMinute;
+        const state = inside ? "in window" : "outside window";
+        return `<article><span class="component-label">Pinned · ${escapeHtml(NAMES[visit.ownerId] ?? visit.ownerId)}</span><strong>${escapeHtml(visit.name)}</strong><small>${formatClockMinute(visit.promisedWindow.startMinute)}–${formatClockMinute(visit.promisedWindow.endMinute)} · ${state}${changed ? " · changed" : ""}</small></article>`;
+      }).join("")}
     </div>
   </details>`;
 }
@@ -498,6 +513,7 @@ function renderBreadthDebrief(state: BreadthConsoleState): string {
     throw new Error("Missing Breadth debrief replay evidence");
   }
   const minimumPivotalCandidate = requireCandidate(minimumPivotalDecision, minimumPivotalOutcome.assignedTechnicianId);
+  const replayFacts = replayCardinality(machineResult);
   const lateCount = countLateOutcomes(minimumResult);
   const travelSaved = baseline.addedTravelMinutes - BREADTH_MINIMUM_TOUCH_PREVIEW.playerSummary.addedTravelMinutes;
   const minimumTechnicianName = flexibleTechnicianName(minimumResult);
@@ -516,7 +532,9 @@ function renderBreadthDebrief(state: BreadthConsoleState): string {
       ${renderBreadthLedger(player, baseline, released ? "Your released recovery" : "Your minimum-touch recovery", comparison.player.decisions.length, pinnedEvidence.player.before.length)}
       ${released ? renderReleasedCounterfactual(machineResult, minimumResult) : ""}
       <div class="causal-summary"><strong>The only branch difference</strong><span>${escapeHtml(causal)}</span></div>
-      <blockquote class="breadth-central-sentence">The dispatcher did not foresee the day. It re-evaluated every technician after each assignment and applied the same rules every time. Your job was to decide whether that evidence was sufficient to release the recovery—not to repair each row yourself.</blockquote>
+      <blockquote class="breadth-central-sentence">${replayFacts.recheckedEveryDecision
+        ? `The dispatcher did not foresee the day. It re-evaluated every technician after each assignment — ${replayFacts.technicianFieldSize} technician candidates for each of ${replayFacts.assignmentCount} assignments — and applied the same rules every time. Your job was to decide whether that evidence was sufficient to release the recovery—not to repair each row yourself.`
+        : `The dispatcher did not foresee the day. The replay exposed ${replayFacts.technicianFieldSize} technician candidates for ${replayFacts.assignmentCount} assignments, but its candidate-field sizes did not support a complete re-evaluation claim. Your job was to decide whether that evidence was sufficient to release the recovery—not to repair each row yourself.`}</blockquote>
       <p class="breadth-teaching">${escapeHtml(finalTeaching)}</p>
       <div class="debrief-actions"><button class="secondary-button" type="button" data-action="open-breadth-trace">Open engineering trace</button><button class="primary-button" type="button" data-action="restart-breadth">Restart authored case</button></div>
     </section>
@@ -668,6 +686,26 @@ function countLateOutcomes(result: SimulationResult): number {
   return result.outcomes.filter((outcome) => outcome.lateByMinutes > 0).length;
 }
 
+interface ReplayCardinality {
+  readonly assignmentCount: number;
+  readonly technicianFieldSize: number;
+  readonly recheckedEveryDecision: boolean;
+}
+
+function replayCardinality(result: SimulationResult): ReplayCardinality {
+  const assignmentCount = result.decisions.length;
+  const technicianFieldSizes = result.decisions.map((decision) => decision.ranking.length);
+  const technicianFieldSize = technicianFieldSizes[0] ?? 0;
+  return {
+    assignmentCount,
+    technicianFieldSize,
+    recheckedEveryDecision: assignmentCount > 0 &&
+      assignmentCount === result.outcomes.length &&
+      assignmentCount === result.transitions.length &&
+      technicianFieldSizes.every((size) => size === technicianFieldSize),
+  };
+}
+
 interface PinnedBranchEvidence {
   readonly before: readonly BreadthPinnedVisit[];
   readonly after: readonly BreadthPinnedVisit[];
@@ -678,6 +716,7 @@ interface PinnedManifestEvidence {
   readonly player: PinnedBranchEvidence;
   readonly baseline: PinnedBranchEvidence;
   readonly allUnchanged: boolean;
+  readonly allUnranked: boolean;
   readonly allInside: boolean;
 }
 
@@ -688,11 +727,17 @@ function pinnedManifestEvidence(comparison: BreadthComparison): PinnedManifestEv
       player.after.length !== baseline.after.length) {
     throw new Error("Breadth branch pinned manifests have different sizes");
   }
+  const pinnedIds = new Set(player.before.map((visit) => visit.id));
+  const playerRankedPinned = comparison.player.decisions.some((decision) =>
+    pinnedIds.has(decision.inputSnapshot.job.id));
+  const baselineRankedPinned = comparison.baseline.decisions.some((decision) =>
+    pinnedIds.has(decision.inputSnapshot.job.id));
   const manifests = [player.before, player.after, baseline.before, baseline.after];
   return {
     player,
     baseline,
     allUnchanged: player.moved === 0 && baseline.moved === 0,
+    allUnranked: !playerRankedPinned && !baselineRankedPinned,
     allInside: manifests.every((manifest) =>
       manifest.every((visit) => visit.completionMinute <= visit.promisedWindow.endMinute)),
   };

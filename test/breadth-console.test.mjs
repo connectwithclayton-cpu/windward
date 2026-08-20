@@ -99,7 +99,7 @@ test("both Breadth choices focus a legible receipt and reach respectful outcomes
   assert.match(minimumOutcomeHtml, /Diagnostic repair[\s\S]*11:43 AM[\s\S]*13 min late/);
 
   const alteredPinnedAfter = minimum.comparison.player.pinnedVisitsAfter.map((visit, index) =>
-    index === 0 ? { ...visit, ownerId: "marcus-reed" } : visit,
+    index === 0 ? { ...visit, ownerId: "marcus-reed", completionMinute: 520 } : visit,
   );
   const alteredOutcomeHtml = renderBreadthConsole({
     ...minimum,
@@ -113,6 +113,8 @@ test("both Breadth choices focus a legible receipt and reach respectful outcomes
     },
   });
   assert.match(alteredOutcomeHtml, /1 pinned visits moved/);
+  assert.match(alteredOutcomeHtml, /8 pinned visits · changed/);
+  assert.match(alteredOutcomeHtml, /outside window/);
   assert.doesNotMatch(alteredOutcomeHtml, /No pinned visit moved/);
 });
 
@@ -128,6 +130,29 @@ test("both Breadth debriefs use the shared branch ledger and deny machine foresi
   assert.match(releasedHtml, /Approving sound machine work is supervision, not spectatorship/);
   assert.match(releasedHtml, /The dispatcher did not foresee the day/);
   assert.match(releasedHtml, /re-evaluated every technician after each assignment/);
+
+  const alteredBaselineDecision = {
+    ...released.comparison.baseline.decisions[0],
+    ranking: [
+      ...released.comparison.baseline.decisions[0].ranking,
+      released.comparison.baseline.decisions[0].ranking[0],
+    ],
+  };
+  const alteredDebriefHtml = renderBreadthConsole({
+    ...released,
+    comparison: {
+      ...released.comparison,
+      baseline: {
+        ...released.comparison.baseline,
+        decisions: [
+          alteredBaselineDecision,
+          ...released.comparison.baseline.decisions.slice(1),
+        ],
+      },
+    },
+  });
+  assert.match(alteredDebriefHtml, /candidate-field sizes did not support a complete re-evaluation claim/);
+  assert.doesNotMatch(alteredDebriefHtml, /re-evaluated every technician after each assignment —/);
 
   const minimum = reachDebrief("minimum-touch");
   const minimumHtml = renderBreadthConsole(minimum);
