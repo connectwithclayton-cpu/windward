@@ -75,7 +75,13 @@
   --duration-base: 220ms;
   --duration-route: 380ms;
   --duration-slow: 520ms;
+  --duration-focus-walk: 1200ms;
+  --duration-focus-walk-pivotal: 2400ms;
   --delay-reveal: 300ms;
+  --delay-focus-walk-start: 0ms;
+  --delay-focus-walk-pivotal: 1350ms;
+  --delay-focus-walk-third: 3900ms;
+  --delay-focus-walk-fourth: 5250ms;
   --ease-standard: cubic-bezier(.2, .7, .2, 1);
   --ease-emphasized: cubic-bezier(.22, .8, .24, 1);
 
@@ -483,10 +489,10 @@ code, pre { font-family: var(--font-mono); }
 .walk-step.is-pivotal .walk-sequence-copy { border-left-color: var(--color-accent); color: var(--color-brand-strong); background: var(--color-accent-soft); }
 .assignment-walk.is-walking .walk-step { animation: assignment-focus var(--walk-duration) var(--ease-emphasized) var(--walk-delay); }
 .assignment-walk.is-walking .walk-current { animation: assignment-label var(--walk-duration) var(--ease-emphasized) var(--walk-delay); }
-.walk-step-1 { --walk-delay: 0ms; --walk-duration: 1200ms; }
-.walk-step-2 { --walk-delay: 1350ms; --walk-duration: 2400ms; }
-.walk-step-3 { --walk-delay: 3900ms; --walk-duration: 1200ms; }
-.walk-step-4 { --walk-delay: 5250ms; --walk-duration: 1200ms; }
+.walk-step-1 { --walk-delay: var(--delay-focus-walk-start); --walk-duration: var(--duration-focus-walk); }
+.walk-step-2 { --walk-delay: var(--delay-focus-walk-pivotal); --walk-duration: var(--duration-focus-walk-pivotal); }
+.walk-step-3 { --walk-delay: var(--delay-focus-walk-third); --walk-duration: var(--duration-focus-walk); }
+.walk-step-4 { --walk-delay: var(--delay-focus-walk-fourth); --walk-duration: var(--duration-focus-walk); }
 .breadth-turn { grid-column: 2 / -1; display: flex; align-items: center; gap: var(--space-2); min-width: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius-pill); color: var(--color-brand-strong); background: var(--color-accent-soft); font-size: var(--type-2); }
 .breadth-turn i { color: var(--color-accent); font-style: normal; font-weight: var(--weight-black); }
 .recovery-evidence { padding: var(--space-4); }

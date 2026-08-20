@@ -272,11 +272,14 @@ function renderRecoveryRow(
   const previousWinnerName = previousAssignedId === null || previousAssignedId === undefined
     ? null
     : NAMES[previousAssignedId] ?? previousAssignedId;
+  const recheckCopy = replayFacts.recheckedEveryDecision
+    ? `all ${replayFacts.technicianFieldSize} rechecked`
+    : "recheck evidence incomplete";
   const sequenceCopy = index === 0
     ? `Current assignment · all ${replayFacts.technicianFieldSize} ranked · ${currentWinnerName} selected and recorded`
     : pivotal && previousWinnerName !== null
-      ? `${index} assignment recorded · current board carried forward · all ${replayFacts.technicianFieldSize} rechecked · winner changes ${previousWinnerName} → ${currentWinnerName}`
-      : `${index} assignments recorded · current board carried forward · all ${replayFacts.technicianFieldSize} rechecked · ${currentWinnerName} selected`;
+      ? `${index} assignment recorded · current board carried forward · ${recheckCopy} · winner changes ${previousWinnerName} → ${currentWinnerName}`
+      : `${index} assignments recorded · current board carried forward · ${recheckCopy} · ${currentWinnerName} selected`;
   const turn = pivotal && previousAssignedId !== null && previousAssignedId !== undefined
     ? `<span class="breadth-turn"><strong>${escapeHtml(NAMES[previousAssignedId] ?? previousAssignedId)}</strong><i aria-hidden="true">→</i><span>${index === 1 ? "first assignment recorded" : "assignment " + index + " recorded"}</span><i aria-hidden="true">→</i><strong>${replayFacts.recheckedEveryDecision ? `All ${replayFacts.technicianFieldSize} rechecked` : "Recheck evidence incomplete"}</strong><i aria-hidden="true">→</i><strong>${escapeHtml(NAMES[decision.winner.technicianId] ?? decision.winner.technicianId)}</strong></span>`
     : "";
