@@ -54,7 +54,7 @@ test("the Breadth decision exposes two respectable choices and serial engine evi
   assert.equal((html.match(/class="recovery-row /g) ?? []).length, 4);
   assert.equal((html.match(/class="candidate-evidence /g) ?? []).length, 16);
   assert.match(html, /Elena[\s\S]*first assignment recorded[\s\S]*All 4 rechecked[\s\S]*Marcus/);
-  assert.match(html, /Elena remains closer\. Marcus becomes the best current choice/);
+  assert.match(html, /Elena Park remains closer\. Marcus Reed becomes the best current choice/);
   assert.match(html, /Marcus Reed[\s\S]*12 min[\s\S]*Elena Park[\s\S]*5 min/);
   assert.match(html, /38 min wait/);
   assert.match(html, /228\/480 min/);
@@ -194,7 +194,7 @@ test("both Breadth debriefs use the shared branch ledger and deny machine foresi
   assert.match(minimumHtml, /Your minimum-touch recovery/);
   assert.match(minimumHtml, /Your alternative achieved its stated goal/);
   assert.match(minimumHtml, /No certification rule was broken and no pinned visit moved/);
-  assert.match(minimumHtml, /The cost was one late commitment/);
+  assert.match(minimumHtml, /The cost was 1 late commitment/);
   const alteredMinimumDebriefHtml = renderBreadthConsole({
     ...minimum,
     comparison: {
