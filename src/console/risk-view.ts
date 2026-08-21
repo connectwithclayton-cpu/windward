@@ -85,7 +85,6 @@ function renderRiskDecision(state: RiskConsoleState): string {
     : state.planChoice === "protect-weekend"
     ? `<strong>Override recorded — weekend protection added.</strong><span>The plan average moved ${formatRiskMoney(comparison.baseline.averageNetValueCents)} → ${formatRiskMoney(comparison.player.averageNetValueCents)}; loss-limit breaches moved ${comparison.baseline.lossLimitBreachCount} → ${comparison.player.lossLimitBreachCount}.</span>`
     : `<strong>Keep recorded — direct repair retained.</strong><span>The higher average remains at ${formatRiskMoney(comparison.player.averageNetValueCents)}; ${comparison.player.lossLimitBreachCount} of ${comparison.player.worlds.length} outcomes still exceed the loss limit.</span>`;
-  const lossLimit = formatUnsignedRiskMoney(RISK_APPETITE_CASE.lossLimitCents);
   return `<main id="main-content" class="risk-shell phase-enter phase-risk-decision">
     ${renderRiskSignals()}
     ${renderDecisionPanel({
@@ -101,7 +100,6 @@ function renderRiskDecision(state: RiskConsoleState): string {
         className: "frozen-label",
       },
       content: `
-        <p class="sr-only">Both plans start the same repair. Compare the same matched weekends before choosing. The one-job loss limit is ${lossLimit}.</p>
         <div class="risk-world-heading" aria-hidden="true"><strong>${DIRECT_RISK_COHORT.worlds.length}</strong><span>matched weekends</span></div>
         <div class="risk-plan-grid">
           ${renderRiskPlanCard("direct-repair", "Dispatcher chose", recorded)}

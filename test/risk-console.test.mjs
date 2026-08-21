@@ -27,7 +27,8 @@ test("risk decision shows both plans as countable matched-world outcomes", () =>
 
   assert.equal(decision.phase, "decision");
   assert.match(html, /How should the team cover the weekend\?/);
-  assert.match(html, /one-job loss limit is \$15,000/);
+  assert.match(html, /Business can absorb at most a \$15,000 loss from one job/);
+  assert.doesNotMatch(html, /class="sr-only">Both plans start the same repair/);
   assert.equal((html.match(/data-risk-world=/g) ?? []).length, 200);
   assert.equal((html.match(/data-risk-outcome="routine"/g) ?? []).length, 170);
   assert.equal((html.match(/data-risk-outcome="breach"/g) ?? []).length, 15);

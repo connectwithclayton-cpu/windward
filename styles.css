@@ -642,7 +642,7 @@ code, pre { font-family: var(--font-mono); }
   .topbar { min-height: var(--header-height); gap: var(--space-2); }
   .quiet-button { min-height: 2.55rem; padding: var(--space-2) var(--space-3); }
   .briefing-scrim { inset: var(--header-height) 0 0; }
-  .signals, .choice-grid, .decision-actions, .trace-facts, .case-cards, .breadth-choice-grid, .candidate-grid { grid-template-columns: 1fr; }
+  .signals, .choice-grid, .decision-actions, .trace-facts, .case-cards, .risk-plan-grid, .breadth-choice-grid, .candidate-grid { grid-template-columns: 1fr; }
   .signal { grid-template-columns: auto minmax(0, 1fr); }
   .factor-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .score-heading { align-items: start; flex-direction: column; }
