@@ -17,7 +17,6 @@ import {
   renderDecisionPanel,
   renderEventLog,
   renderHonestLimits,
-  renderStatCell,
 } from "./components.js";
 
 export function renderCaseCards(current: "horizon" | "risk" | "breadth"): string {
@@ -86,7 +85,6 @@ function renderRiskDecision(state: RiskConsoleState): string {
     : state.planChoice === "protect-weekend"
     ? `<strong>Override recorded — weekend protection added.</strong><span>The plan average moved ${formatRiskMoney(comparison.baseline.averageNetValueCents)} → ${formatRiskMoney(comparison.player.averageNetValueCents)}; loss-limit breaches moved ${comparison.baseline.lossLimitBreachCount} → ${comparison.player.lossLimitBreachCount}.</span>`
     : `<strong>Keep recorded — direct repair retained.</strong><span>The higher average remains at ${formatRiskMoney(comparison.player.averageNetValueCents)}; ${comparison.player.lossLimitBreachCount} of ${comparison.player.worlds.length} outcomes still exceed the loss limit.</span>`;
-  const lossLimit = formatUnsignedRiskMoney(RISK_APPETITE_CASE.lossLimitCents);
   return `<main id="main-content" class="risk-shell phase-enter phase-risk-decision">
     ${renderRiskSignals()}
     ${renderDecisionPanel({
@@ -102,7 +100,7 @@ function renderRiskDecision(state: RiskConsoleState): string {
         className: "frozen-label",
       },
       content: `
-        <p class="risk-decision-lede">Both plans start the same repair. The AI chose the plan with the higher average. Your one-job loss limit is <strong>${lossLimit}</strong>.</p>
+        <div class="risk-world-heading" aria-hidden="true"><strong>${DIRECT_RISK_COHORT.worlds.length}</strong><span>matched weekends</span></div>
         <div class="risk-plan-grid">
           ${renderRiskPlanCard("direct-repair", "Dispatcher chose", recorded)}
           ${renderRiskPlanCard("protect-weekend", "Override alternative", recorded)}
@@ -125,6 +123,9 @@ function renderRiskPlanCard(
   const cohort = cohortFor(planId);
   const routine = requireOutcome(plan, "ROUTINE_PART_AVAILABLE");
   const disruption = requireOutcome(plan, "PART_UNAVAILABLE_UNTIL_MONDAY");
+  const directAverage = DIRECT_RISK_COHORT.averageNetValueCents;
+  const averageCost = directAverage - cohort.averageNetValueCents;
+  const averageShare = Math.round((cohort.averageNetValueCents / directAverage) * 10_000) / 100;
   const action = planId === "direct-repair" ? "keep-risk" : "protect-risk";
   const button = planId === "direct-repair"
     ? "Keep · Direct repair"
@@ -133,13 +134,39 @@ function renderRiskPlanCard(
     <span class="choice-rank">${escapeHtml(rankLabel)}</span>
     <h2>${escapeHtml(plan.planName)}</h2>
     <div class="risk-plan-facts">
-      ${renderStatCell({ label: `${routine.worldCount} of ${cohort.worlds.length} weekends`, value: formatRiskMoney(routine.netValueCents), detail: routine.coolingStatus.toLowerCase() })}
-      ${renderStatCell({ label: `${disruption.worldCount} of ${cohort.worlds.length} weekends`, value: formatRiskMoney(disruption.netValueCents), detail: disruption.coolingStatus.toLowerCase(), tone: "warning", className: "disruption-fact" })}
-      ${renderStatCell({ label: `Average across ${cohort.worlds.length}`, value: formatRiskMoney(cohort.averageNetValueCents) })}
-      ${renderStatCell({ label: "Loss-limit breaches", value: String(cohort.lossLimitBreachCount), detail: `${cohort.lossLimitBreachCount} of ${cohort.worlds.length} beyond the ${formatUnsignedRiskMoney(cohort.lossLimitCents)} limit`, tone: cohort.lossLimitBreachCount === 0 ? "accent" : "danger", className: "breach-fact" })}
+      ${renderRiskWorldGrid(cohort, routine, disruption)}
+      <div class="risk-average" style="--risk-average-share: ${averageShare}%;">
+        <div><span>Average</span><strong>${formatRiskMoney(cohort.averageNetValueCents)}</strong>${averageCost > 0 ? `<em>−${formatUnsignedRiskMoney(averageCost)} avg</em>` : ""}</div>
+        <span class="risk-average-track" aria-hidden="true"><i></i></span>
+      </div>
     </div>
     <button class="${planId === "direct-repair" ? "secondary-button" : "primary-button"} wide" type="button" data-action="${action}" ${disabled ? "disabled" : ""}>${button}</button>
   </article>`;
+}
+
+function renderRiskWorldGrid(
+  cohort: RiskCohortResult,
+  routine: RankedRiskPlan["outcomes"][number],
+  disruption: RankedRiskPlan["outcomes"][number],
+): string {
+  const worldLabel = `${cohort.worlds.length} matched weekends: ${routine.worldCount} routine at ${formatRiskMoney(routine.netValueCents)}, ${disruption.worldCount} part delays at ${formatRiskMoney(disruption.netValueCents)}; ${cohort.lossLimitBreachCount} cross the ${formatUnsignedRiskMoney(cohort.lossLimitCents)} loss limit.`;
+  const worlds = cohort.worlds.map((world) => {
+    const outcome = world.condition === "ROUTINE_PART_AVAILABLE"
+      ? "routine"
+      : world.lossLimitBreached
+      ? "breach"
+      : "contained";
+    return `<span class="risk-world-unit is-${outcome}" data-risk-world="${escapeHtml(world.worldId)}" data-risk-outcome="${outcome}" aria-hidden="true"></span>`;
+  }).join("");
+  const adverseOutcome = cohort.lossLimitBreachCount > 0 ? "breach" : "contained";
+  const adverseLabel = cohort.weekendCoolingFailureCount > 0 ? "No cooling" : "Cooling on";
+  return `<figure class="risk-world-figure">
+    <div class="risk-world-units" role="img" aria-label="${escapeHtml(worldLabel)}">${worlds}</div>
+    <figcaption class="risk-world-key">
+      <span><i class="risk-key-unit is-routine" aria-hidden="true"></i><strong>${routine.worldCount}</strong><small>Friday cooling</small><b>${formatCompactRiskMoney(routine.netValueCents)}</b></span>
+      <span><i class="risk-key-unit is-${adverseOutcome}" aria-hidden="true"></i><strong>${disruption.worldCount}</strong><small>${adverseLabel}</small><b>${formatCompactRiskMoney(disruption.netValueCents)}</b></span>
+    </figcaption>
+  </figure>`;
 }
 
 function renderRiskWhyDrawer(): string {
@@ -325,7 +352,7 @@ function renderRiskProvenance(): string {
   const cohort = DIRECT_RISK_COHORT;
   const disruptionWorlds = countWorlds(cohort, "PART_UNAVAILABLE_UNTIL_MONDAY");
   const lossLimit = formatUnsignedRiskMoney(cohort.lossLimitCents);
-  return `<footer class="provenance"><strong>Focused simulation, fictional data.</strong> The ${disruptionWorlds}-in-${cohort.worlds.length} likelihood, ${lossLimit} loss limit, plans, outcomes, and money are authored assumptions—not real HVAC pricing, actuarial evidence, or advice. Windward does not show how any real vendor model behaves. This independent portfolio project is not affiliated with, endorsed by, or built for any company.</footer>`;
+  return `<footer class="provenance"><strong>Focused simulation, fictional data.</strong> The ${disruptionWorlds} marked weekends, ${lossLimit} loss limit, plans, outcomes, and money are authored assumptions—not real HVAC pricing, actuarial evidence, or advice. Windward does not show how any real vendor model behaves. This independent portfolio project is not affiliated with, endorsed by, or built for any company.</footer>`;
 }
 
 function requireComparison(state: RiskConsoleState): RiskBranchComparison {

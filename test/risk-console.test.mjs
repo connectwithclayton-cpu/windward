@@ -21,17 +21,21 @@ function reachDistribution(planId) {
   );
 }
 
-test("risk decision states both natural-frequency plans and the pre-stated limit", () => {
+test("risk decision shows both plans as countable matched-world outcomes", () => {
   const decision = startRiskCase(createInitialRiskConsoleState());
   const html = renderRiskConsole(decision);
 
   assert.equal(decision.phase, "decision");
   assert.match(html, /How should the team cover the weekend\?/);
-  assert.match(html, /one-job loss limit is <strong>\$15,000/);
-  assert.match(html, /85 of 100 weekends/);
-  assert.match(html, /15 of 100 weekends/);
-  assert.match(html, /Average across 100/);
-  assert.match(html, /Loss-limit breaches/);
+  assert.match(html, /Business can absorb at most a \$15,000 loss from one job/);
+  assert.doesNotMatch(html, /class="sr-only">Both plans start the same repair/);
+  assert.equal((html.match(/data-risk-world=/g) ?? []).length, 200);
+  assert.equal((html.match(/data-risk-outcome="routine"/g) ?? []).length, 170);
+  assert.equal((html.match(/data-risk-outcome="breach"/g) ?? []).length, 15);
+  assert.equal((html.match(/data-risk-outcome="contained"/g) ?? []).length, 15);
+  assert.match(html, /100 matched weekends: 85 routine at \+\$14,000, 15 part delays at −\$40,000; 15 cross the \$15,000 loss limit/);
+  assert.match(html, /100 matched weekends: 85 routine at \+\$5,000, 15 part delays at −\$8,000; 0 cross the \$15,000 loss limit/);
+  assert.match(html, /−\$2,850 avg/);
   assert.match(html, /Keep · Direct repair/);
   assert.match(html, /Override · Protect the weekend/);
   assert.doesNotMatch(html, /What this authored case study does not prove/);
